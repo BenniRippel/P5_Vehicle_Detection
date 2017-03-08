@@ -19,6 +19,7 @@ class extractData:
 
 
     def read_labels(self):
+        """Read labels.csv to get image-files and according bboxes/labels"""
         file='./UdacityData/labels.csv'
         with open(file, mode='r', newline='') as Log:  # read datafile and store in dict self.data
             header = Log.readline()[:-1].split(',')
@@ -30,6 +31,7 @@ class extractData:
             self.data[key] = [int(a) for a in self.data[key]]
 
     def get_labeled_images(self, label, create_non_label_folder=True):
+        """read images, save subimages defined by labeled bboxes"""
         # name and create folders for the images to save
         folder_label_true = self.dataFolder+label
         self.make_dir(folder_label_true)
@@ -41,11 +43,13 @@ class extractData:
         list_of_images = np.unique(self.data['Frame'])
         for img in list_of_images:
             bb_list = self.get_bboxes_of_image(img, label)
-            self.save_images(img, bb_list, folder_label_true)
+            if create_non_label_folder:
+                self.save_images(img, bb_list, folder_label_true, antifolder=folder_label_false)
+            else:
+                self.save_images(img, bb_list, folder_label_true)
 
 
-
-    def save_images(self, img_f, bboxes, folder):
+    def save_images(self, img_f, bboxes, folder,anti_bbox_size=256, antifolder=''):
         file = self.dataFolder+img_f
         img = cv2.imread(file)
         h,w = img.shape[:2]
@@ -54,13 +58,42 @@ class extractData:
             if (ymin-xmin)>=64 and (ymax-xmax)>=64 and ymin<h and ymax<w and xmin>=0 and xmax>=0:
                 # Note: strange convention: pts for extraction must be (xmax, xmin), (ymax, ymin)
                 slice = cv2.resize(img[xmin:ymin, xmax:ymax, :], self.img_size[:2])
-                # cv2.rectangle(img, (xmax, xmin), (ymax, ymin), (255, 0, 0), 5)
-                # plt.imshow(img)
+                #plot
+                #cv2.rectangle(img, (xmax, xmin), (ymax, ymin), (255, 0, 0), 5)
+                #plt.imshow(img)
                 # plt.show()
                 filename = folder+'/'+img_f[:-4]+'_'+str(idx)+'.png'
                 cv2.imwrite(filename, slice)
 
-                #Todo: for every saved image, find a random area that is not within the bboxes and save it to non_label folder
+                # find anti-image
+                if antifolder:
+                    anti_image_found=False
+                    counter = 0
+                    while not anti_image_found and counter<20:
+                        # get random point, add second point with distance anti_bbox_size
+                        p1 = (np.random.randint(0, w-anti_bbox_size-1), np.random.randint(0, h-anti_bbox_size-1))
+                        p2 = (p1[0]+anti_bbox_size, p1[1]+anti_bbox_size)
+                        if self.no_overlap_check(p1, p2, bboxes):  # area doesnt overlap positive bboxes
+                            slice = cv2.resize(img[p1[1]:p2[1], p1[0]:p2[0], :], self.img_size[:2])
+                            #plot
+                            #cv2.rectangle(img, p1, p2, (0, 0, 255), 5)
+                            #plt.imshow(img)
+                            #plt.show()
+                            filename = antifolder + '/' + img_f[:-4] + '_' + str(idx) + '.png'
+                            cv2.imwrite(filename, slice)
+                            anti_image_found=True
+                            counter +=1
+
+    def no_overlap_check(self, p1, p2, bboxes):
+        """Checks if the area defined by p1 and p1 overlaps with any bboxes"""
+        x_range_new = set(range(p1[0], p2[0]+1))
+        y_range_new = set(range(p1[1], p2[1]+1))
+        for xmin, ymin, xmax, ymax in bboxes:
+            x_range_bb = set(range(xmax, ymax+1))
+            y_range_bb = set(range(xmin, ymin+1))
+            if (x_range_new & x_range_bb) and (y_range_new & y_range_bb):   # if intersection for x and y values of both
+                return False    # Overlap
+        return True # No overlap
 
     def get_bboxes_of_image(self, img, label):
         """get all bounding boxes of the passed image as a list [((xmin,ymin),(xmax,ymax)), ...]"""
