@@ -1,11 +1,12 @@
 # Plan für train test split:
 #   Shuffle KITTI daten, davon 30% als testsplit, rest mit den anderen ordnern kombinieren als training set
-
+from moviepy.editor import VideoFileClip
 import matplotlib.pyplot as plt
 import numpy as np
 import cv2
 import glob
 import time
+from collections import deque
 from sklearn.svm import LinearSVC
 from sklearn.preprocessing import StandardScaler
 from skimage.feature import hog
@@ -14,34 +15,132 @@ from sklearn.model_selection import train_test_split
 class Classifier:
     def __init__(self):
         ### Tweak these parameters and see how the results change.
-        self.color_space = 'HLS'  # Can be RGB, HSV, LUV, HLS, YUV, YCrCb
-        self.orient = 12  # HOG orientations
+        self.color_space = 'YCrCb'  # Can be RGB, HSV, LUV, HLS, YUV, YCrCb
+        self.orient = 9  # HOG orientations
         self.pix_per_cell = 8  # HOG pixels per cell
         self.cell_per_block = 2  # HOG cells per block
         self.hog_channel = 'ALL'  # Can be 0, 1, 2, or "ALL"
-        self.spatial_size = (16, 16)  # Spatial binning dimensions
-        self.hist_bins = 16  # Number of histogram bins
-        self.bins_range = (0, 256)
+        self.spatial_size = (32, 32)  # Spatial binning dimensions
+        self.hist_bins = 32  # Number of histogram bins
         self.spatial_feat = True  # Spatial features on or off
         self.hist_feat = True  # Histogram features on or off
         self.hog_feat = True  # HOG features on or off
-        self.y_start_stop = [360, None]  # Min and max in y to search in slide_window()
+        self.y_start_stop = [400, 656]  # Min and max in y to search in slide_window()
+        self.xy_overlap = (0.5, 0.5)  # overlap of search windows
+        self.scale = 1.5
+
+        self.scaler = []
+        self.classifier = []
+
+        self.heatmap = deque(maxlen=5)
+
+    def run_video(self, video='./test_video.mp4'):
+        """Run the Lane Finding Pipeline on a input video"""
+        car_list, noncar_list = self.readData()
+        X_train, X_test, y_train, y_test, self.scaler = self.get_features(car_list, noncar_list)
+        print(X_train.shape, y_train.shape)
+        print(X_test.shape, y_test.shape)
+        print(np.max(X_train))
+        self.classifier = self.train_Classifier(X_train, y_train, X_test, y_test)
+
+
+        out_file = video[:-4] + '_output.mp4'  # output file
+        clip = VideoFileClip(video)  # read video
+        output = clip.fl_image(self.find_cars)  # process video; function expects color images
+        output.write_videofile(out_file, audio=False)  # write video
 
     def run(self):
         car_list, noncar_list = self.readData()
         X_train, X_test, y_train, y_test, X_Scaler = self.get_features(car_list, noncar_list)
         print(X_train.shape, y_train.shape)
         print(X_test.shape, y_test.shape)
-
+        print(np.max(X_train))
         classifier = self.train_Classifier(X_train, y_train, X_test, y_test)
 
         tests = glob.glob('./test_images/*.jpg')
         for img in tests:
             test_img = cv2.imread(img)
-            #t= time.time()
-            self.predict_windows(test_img, classifier, X_Scaler)
-            #print('Time prediction: ', time.time()-t)
+            t= time.time()
+            #self.predict_windows(test_img, classifier, X_Scaler)
+            img=self.find_cars(test_img, 2, classifier, X_Scaler)
+            print('Time prediction: ', time.time()-t)
+            plt.figure()
+            plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
         plt.show()
+
+    def find_cars(self, img):
+        draw_img = np.copy(img)
+        #img = img.astype(np.float32) / 255
+        # check for valid y_start_stop
+        if self.y_start_stop[0] == None: self.y_start_stop[0]=img.shape[0]/2
+        if self.y_start_stop[1] == None: self.y_start_stop[1]=img.shape[0]-1
+        # get image slice to get HOG for
+        img_tosearch = img[self.y_start_stop[0]:self.y_start_stop[1], :, :]
+
+        # convert colorspace
+        if self.color_space is not 'BGR':
+            conv_to = eval('cv2.COLOR_BGR2'+self.color_space)
+            ctrans_tosearch = cv2.cvtColor(img_tosearch, conv_to)
+        else:
+            ctrans_tosearch = img_tosearch
+
+        #scale
+        if self.scale != 1:
+            imshape = ctrans_tosearch.shape
+            ctrans_tosearch = cv2.resize(ctrans_tosearch, (np.int(imshape[1] / self.scale), np.int(imshape[0] / self.scale)))
+
+        ch1 = ctrans_tosearch[:, :, 0]
+        ch2 = ctrans_tosearch[:, :, 1]
+        ch3 = ctrans_tosearch[:, :, 2]
+
+        # Define blocks and steps as above
+        nxblocks = (ch1.shape[1] // self.pix_per_cell) - 1 # no of blocks in x-dir over image
+        nyblocks = (ch1.shape[0] // self.pix_per_cell) - 1 # no of blocks in y-dir over image
+        # 64 was the orginal sampling rate, with 8 cells and 8 pix per cell
+        window = 64
+        nblocks_per_window = (window // self.pix_per_cell) - 1
+        cells_per_step = 2  # Instead of overlap, define how many cells to step
+        nxsteps = (nxblocks - nblocks_per_window) // cells_per_step
+        nysteps = (nyblocks - nblocks_per_window) // cells_per_step
+
+        # Compute individual channel HOG features for the entire image
+        hog1 = self.get_hog_features(ch1, feature_vec=False)
+        hog2 = self.get_hog_features(ch2, feature_vec=False)
+        hog3 = self.get_hog_features(ch3, feature_vec=False)
+
+        for xb in range(nxsteps): # indices in hog cells
+            for yb in range(nysteps):
+                ypos = yb * cells_per_step
+                xpos = xb * cells_per_step
+                # Extract HOG for this patch
+                hog_feat1 = hog1[ypos:ypos + nblocks_per_window, xpos:xpos + nblocks_per_window].ravel()
+                hog_feat2 = hog2[ypos:ypos + nblocks_per_window, xpos:xpos + nblocks_per_window].ravel()
+                hog_feat3 = hog3[ypos:ypos + nblocks_per_window, xpos:xpos + nblocks_per_window].ravel()
+                hog_features = np.hstack((hog_feat1, hog_feat2, hog_feat3))
+
+                # index in pixelspace
+                xleft = xpos * self.pix_per_cell
+                ytop = ypos * self.pix_per_cell
+
+                # Extract the image patch
+                subimg = cv2.resize(ctrans_tosearch[ytop:ytop + window, xleft:xleft + window], (64, 64))
+
+                # Get color features
+                spatial_features = self.bin_spatial(subimg)
+                hist_features = self.color_hist(subimg)
+
+                # Scale features and make a prediction
+                test_features = self.scaler.transform(np.hstack((spatial_features, hist_features, hog_features)).reshape(1, -1))
+                test_prediction = self.classifier.predict(test_features)
+
+                if test_prediction == 1:
+                    xbox_left = np.int(xleft * self.scale)
+                    ytop_draw = np.int(ytop * self.scale)
+                    win_draw = np.int(window * self.scale)
+                    cv2.rectangle(draw_img, (xbox_left, ytop_draw + self.y_start_stop[0]),
+                                  (xbox_left + win_draw, ytop_draw + win_draw + self.y_start_stop[0]), (0, 0, 255), 6)
+
+        return draw_img
 
     def single_img_features(self, img):
         # 1) Define an empty list to receive features
@@ -102,9 +201,14 @@ class Classifier:
         #TODO: hier aendern für die folder, in den listen pfade angeben, dabei train test split machen
         # Read in cars and notcars
         class_1 = glob.glob('./trainingData/vehicles/vehicles/KITTI_extracted/*.png')
-        class_2 = glob.glob('./trainingData/non-vehicles/non-vehicles/GTI/*.png')
+        class_1.extend(glob.glob('./trainingData/vehicles/vehicles/GTI_Far/*.png'))
+        class_1.extend(glob.glob('./trainingData/vehicles/vehicles/GTI_Left/*.png'))
+        class_1.extend(glob.glob('./trainingData/vehicles/vehicles/GTI_MiddleClose/*.png'))
+        class_1.extend(glob.glob('./trainingData/vehicles/vehicles/GTI_Right/*.png'))
 
-        return class_1[:3900], class_2
+        class_2 = glob.glob('./trainingData/non-vehicles/non-vehicles/GTI/*.png')
+        class_2.extend(glob.glob('./trainingData/non-vehicles/non-vehicles/Extras/*.png'))
+        return class_1, class_2
 
     def get_features(self, class_1, class_2):
         """Loads images and extracts the features, splits into train and testset"""
@@ -144,7 +248,7 @@ class Classifier:
 
 
         windows = self.slide_window(image, x_start_stop=[None, None], y_start_stop=self.y_start_stop,
-                                    xy_window=(60, 60), xy_overlap=(0.5, 0.5))
+                                    xy_window=(60, 60), xy_overlap=self.xy_overlap)
 
         hot_windows = self.search_windows(image, windows, classifier, X_scaler)
 
@@ -182,9 +286,9 @@ class Classifier:
     def color_hist(self, img):
         """Compute color histogram features (code taken from udacity class)"""
         # Compute the histogram of the color channels separately
-        channel1_hist = np.histogram(img[:, :, 0], bins=self.hist_bins, range=self.bins_range)
-        channel2_hist = np.histogram(img[:, :, 1], bins=self.hist_bins, range=self.bins_range)
-        channel3_hist = np.histogram(img[:, :, 2], bins=self.hist_bins, range=self.bins_range)
+        channel1_hist = np.histogram(img[:, :, 0], bins=self.hist_bins)
+        channel2_hist = np.histogram(img[:, :, 1], bins=self.hist_bins)
+        channel3_hist = np.histogram(img[:, :, 2], bins=self.hist_bins)
         # Concatenate the histograms into a single feature vector
         hist_features = np.concatenate((channel1_hist[0], channel2_hist[0], channel3_hist[0]))
         # Return the individual histograms, bin_centers and feature vector
@@ -286,7 +390,7 @@ class Classifier:
 
 def main():
 
-    Classifier().run()
+    Classifier().run_video()
 # executes main() if script is executed directly as the main function and not loaded as module
 if __name__ == '__main__':
     main()

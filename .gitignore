@@ -1,0 +1,7 @@
+*.p
+*.pickle
+*.zip
+*.npy
+*.idea
+*.pyc
+*.xml
