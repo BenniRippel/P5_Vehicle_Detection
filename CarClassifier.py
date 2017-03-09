@@ -33,9 +33,9 @@ class Classifier:
         self.classifier = []
 
         self.heatmap = deque(maxlen=5)
-        self.heat_thresh = 3
+        self.heat_thresh = 2
 
-    def run_video(self, video='./project_video.mp4'):
+    def run_video(self, video='./test_video.mp4'):
         """Run the Vehicle Detection Pipeline on a input video"""
         car_list, noncar_list = self.readData()
         X_train, X_test, y_train, y_test, self.scaler = self.get_features(car_list, noncar_list)
@@ -57,7 +57,7 @@ class Classifier:
         h, w, c = frame.shape
         h_n = int(h / 3)
         w_n = int(w / 3)
-        img = self.heatmap[-1]/np.max(self.heatmap[-1])
+        img = np.mean(self.heatmap, axis=0)/np.max(np.mean(self.heatmap, axis=0))
         img = np.dstack((img * 255, img * 255, img * 255))
         img = cv2.resize(img, (w_n, h_n), interpolation=cv2.INTER_AREA)
         frame[:h_n, -w_n:, :] = img
@@ -238,14 +238,14 @@ class Classifier:
         #TODO: hier aendern für die folder, in den listen pfade angeben, dabei train test split machen
         # Read in cars and notcars
         class_1 = glob.glob('./trainingData/vehicles/vehicles/KITTI_extracted/*.png')
-        class_1.extend(glob.glob('./trainingData/vehicles/vehicles/GTI_Far/*.png'))
-        class_1.extend(glob.glob('./trainingData/vehicles/vehicles/GTI_Left/*.png'))
-        class_1.extend(glob.glob('./trainingData/vehicles/vehicles/GTI_MiddleClose/*.png'))
-        class_1.extend(glob.glob('./trainingData/vehicles/vehicles/GTI_Right/*.png'))
+        #class_1.extend(glob.glob('./trainingData/vehicles/vehicles/GTI_Far/*.png'))
+        #class_1.extend(glob.glob('./trainingData/vehicles/vehicles/GTI_Left/*.png'))
+        #class_1.extend(glob.glob('./trainingData/vehicles/vehicles/GTI_MiddleClose/*.png'))
+        #class_1.extend(glob.glob('./trainingData/vehicles/vehicles/GTI_Right/*.png'))
         class_1.extend(glob.glob('./trainingData/vehicles/vehicles/UdacityCar/*.png'))
 
         class_2=glob.glob('./trainingData/non-vehicles/non-vehicles/Extras/*.png')
-        class_2.extend(glob.glob('./trainingData/non-vehicles/non-vehicles/GTI/*.png'))
+        #class_2.extend(glob.glob('./trainingData/non-vehicles/non-vehicles/GTI/*.png'))
         class_2.extend(glob.glob('./trainingData/non-vehicles/non-vehicles/UdacityNon_Car/*.png'))
 
         #Udacity and KITTI
