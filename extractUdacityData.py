@@ -8,14 +8,16 @@ import matplotlib.pyplot as plt
 
 class extractData:
 
-    def __init__(self, dataFolder='./UdacityData/', img_size=(64, 64, 3)):
+    def __init__(self, labels=['Car'], dataFolder='./UdacityData/', img_size=(64, 64, 3)):
         self.dataFolder = dataFolder
         self.data = None
         self.img_size= img_size
+        self.labels = labels
+        self.stepsize = 3 # use every Xth frame ()
 
     def run(self):
         self.read_labels()
-        self.get_labeled_images('Car')
+        self.get_labeled_images()
 
 
     def read_labels(self):
@@ -30,28 +32,30 @@ class extractData:
         for key in ['xmax', 'xmin', 'ymax', 'ymin']:
             self.data[key] = [int(a) for a in self.data[key]]
 
-    def get_labeled_images(self, label, create_non_label_folder=True):
+    def get_labeled_images(self, label=['Car'], create_non_label_folder=True):
         """read images, save subimages defined by labeled bboxes"""
-        # name and create folders for the images to save
-        folder_label_true = self.dataFolder+label
-        self.make_dir(folder_label_true)
-        if create_non_label_folder:
-            folder_label_false = self.dataFolder+'non_'+label
-            self.make_dir(folder_label_false)
-
-        # iterate through images
-        list_of_images = np.unique(self.data['Frame'])
-        for img in list_of_images:
-            bb_list = self.get_bboxes_of_image(img, label)
+        for lab in label:
+            # name and create folders for the images to save
+            folder_label_true = self.dataFolder+lab
+            self.make_dir(folder_label_true)
             if create_non_label_folder:
-                self.save_images(img, bb_list, folder_label_true, antifolder=folder_label_false)
-            else:
-                self.save_images(img, bb_list, folder_label_true)
+                folder_label_false = self.dataFolder+'non_'+lab
+                self.make_dir(folder_label_false)
+
+            # iterate through images
+            list_of_images = np.sort(np.unique(self.data['Frame']))[::self.stepsize]
+            for img in list_of_images:
+                bb_list = self.get_bboxes_of_image(img, lab)
+                if create_non_label_folder:
+                    self.save_images(img, bb_list, folder_label_true, antifolder=folder_label_false)
+                else:
+                    self.save_images(img, bb_list, folder_label_true)
 
 
     def save_images(self, img_f, bboxes, folder,anti_bbox_size=256, antifolder=''):
         file = self.dataFolder+img_f
         img = cv2.imread(file)
+        img = np.dstack((cv2.equalizeHist(img[:,:,0]), cv2.equalizeHist(img[:,:,1]), cv2.equalizeHist(img[:,:,2])))
         h,w = img.shape[:2]
         for idx, (xmin, ymin, xmax, ymax) in enumerate(bboxes):
             # only save sub-images if sides are larger than 64px
@@ -118,7 +122,6 @@ class extractData:
 def main():
 
     extractData().run()
-    #extractData().read_labels()
 # executes main() if script is executed directly as the main function and not loaded as module
 if __name__ == '__main__':
     main()

@@ -11,6 +11,7 @@ from sklearn.svm import LinearSVC
 from sklearn.preprocessing import StandardScaler
 from skimage.feature import hog
 from sklearn.model_selection import train_test_split
+from scipy.ndimage.measurements import label
 
 class Classifier:
     def __init__(self):
@@ -20,22 +21,50 @@ class Classifier:
         self.pix_per_cell = 8  # HOG pixels per cell
         self.cell_per_block = 2  # HOG cells per block
         self.hog_channel = 'ALL'  # Can be 0, 1, 2, or "ALL"
-        self.spatial_size = (32, 32)  # Spatial binning dimensions
-        self.hist_bins = 32  # Number of histogram bins
+        self.spatial_size = (16, 16)  # Spatial binning dimensions
+        self.hist_bins = 16  # Number of histogram bins
         self.spatial_feat = True  # Spatial features on or off
         self.hist_feat = True  # Histogram features on or off
         self.hog_feat = True  # HOG features on or off
         self.y_start_stop = [400, 656]  # Min and max in y to search in slide_window()
-        self.xy_overlap = (0.5, 0.5)  # overlap of search windows
-        self.scale = 1.5
+        self.scale = [1, 1.5]
 
         self.scaler = []
         self.classifier = []
 
         self.heatmap = deque(maxlen=5)
+        self.heat_thresh = 3
 
-    def run_video(self, video='./test_video.mp4'):
-        """Run the Lane Finding Pipeline on a input video"""
+    def run_video(self, video='./project_video.mp4'):
+        """Run the Vehicle Detection Pipeline on a input video"""
+        car_list, noncar_list = self.readData()
+        X_train, X_test, y_train, y_test, self.scaler = self.get_features(car_list, noncar_list)
+        self.classifier = self.train_Classifier(X_train, y_train, X_test, y_test)
+
+        out_file = video[:-4] + '_output.mp4'  # output file
+        clip = VideoFileClip(video)  # read video
+        output = clip.fl_image(self.process_frame)  # process video; function expects color images
+        output.write_videofile(out_file, audio=False)  # write video
+
+    def process_frame(self, img):
+        """processes a videoframe, after a classifier was trained"""
+        self.find_cars(cv2.cvtColor(img, cv2.COLOR_RGB2BGR), return_image=True)
+        img = self.plot_bboxes(img)
+        return self.add_heatmap(img)
+
+    def add_heatmap(self, frame):
+        """Add the img to the upper right corner of the frame, scale by 1/3"""
+        h, w, c = frame.shape
+        h_n = int(h / 3)
+        w_n = int(w / 3)
+        img = self.heatmap[-1]/np.max(self.heatmap[-1])
+        img = np.dstack((img * 255, img * 255, img * 255))
+        img = cv2.resize(img, (w_n, h_n), interpolation=cv2.INTER_AREA)
+        frame[:h_n, -w_n:, :] = img
+        return frame
+
+    def run_images(self):
+        """Run on example images"""
         car_list, noncar_list = self.readData()
         X_train, X_test, y_train, y_test, self.scaler = self.get_features(car_list, noncar_list)
         print(X_train.shape, y_train.shape)
@@ -43,34 +72,58 @@ class Classifier:
         print(np.max(X_train))
         self.classifier = self.train_Classifier(X_train, y_train, X_test, y_test)
 
-
-        out_file = video[:-4] + '_output.mp4'  # output file
-        clip = VideoFileClip(video)  # read video
-        output = clip.fl_image(self.find_cars)  # process video; function expects color images
-        output.write_videofile(out_file, audio=False)  # write video
-
-    def run(self):
-        car_list, noncar_list = self.readData()
-        X_train, X_test, y_train, y_test, X_Scaler = self.get_features(car_list, noncar_list)
-        print(X_train.shape, y_train.shape)
-        print(X_test.shape, y_test.shape)
-        print(np.max(X_train))
-        classifier = self.train_Classifier(X_train, y_train, X_test, y_test)
-
         tests = glob.glob('./test_images/*.jpg')
+        fig = plt.figure()
+        idx = 1
+
         for img in tests:
             test_img = cv2.imread(img)
             t= time.time()
-            #self.predict_windows(test_img, classifier, X_Scaler)
-            img=self.find_cars(test_img, 2, classifier, X_Scaler)
+            self.heatmap = []
+            img=self.find_cars(test_img, return_image=True)
             print('Time prediction: ', time.time()-t)
-            plt.figure()
+            fig.add_subplot(len(tests), 2, idx)
+            idx+=1
             plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+            plt.axis('off')
+            fig.add_subplot(len(tests), 2, idx)
+            idx+=1
+            plt.imshow(self.heatmap[-1], cmap='hot')
+            plt.axis('off')
+        plt.subplots_adjust(left=0.28, bottom=0.01, right=0.69, top=0.98, wspace=0.03, hspace=0.03)
+        plt.savefig('./output_images/test_heatmap.png', dpi=400)
         plt.show()
 
-    def find_cars(self, img):
-        draw_img = np.copy(img)
-        #img = img.astype(np.float32) / 255
+    def plot_bboxes(self, img):
+        """Plot areas wihere the heatmap surpasses a certain threshold"""
+        # get mean of last heatmaps
+        heatmap = np.mean(self.heatmap, axis=0)
+        # threshold heatmap
+        heatmap[heatmap<self.heat_thresh]=0
+        # get labeled heatmap
+        labeled, numCars = label(heatmap)
+        #draw cars in  image
+        for car in range(1, numCars+1):
+            # Find pixels with each car_number label value
+            nonzero = (labeled == car).nonzero()
+            # Identify x and y values of those pixels
+            nonzeroy = np.array(nonzero[0])
+            nonzerox = np.array(nonzero[1])
+            # Define a bounding box based on min/max x and y
+            bbox = ((np.min(nonzerox), np.min(nonzeroy)), (np.max(nonzerox), np.max(nonzeroy)))
+            # Draw the box on the image
+            cv2.rectangle(img, bbox[0], bbox[1], (0, 0, 255), 6)
+            # Return the image
+        return img
+
+    def find_cars(self, img, return_image=False):
+        """Find cars in an img using self.classifier and a sliding window approach. Add locations to heatmap and draw
+        the positive windows if return_image = True. Most of the code taken from udacity class """
+        #init image to draw on
+        if return_image: draw_img = np.copy(img)
+        #init heat
+        heat = np.zeros_like(draw_img[:, :, 0])
+
         # check for valid y_start_stop
         if self.y_start_stop[0] == None: self.y_start_stop[0]=img.shape[0]/2
         if self.y_start_stop[1] == None: self.y_start_stop[1]=img.shape[0]-1
@@ -80,67 +133,73 @@ class Classifier:
         # convert colorspace
         if self.color_space is not 'BGR':
             conv_to = eval('cv2.COLOR_BGR2'+self.color_space)
-            ctrans_tosearch = cv2.cvtColor(img_tosearch, conv_to)
+            ctrans = cv2.cvtColor(img_tosearch, conv_to)
         else:
-            ctrans_tosearch = img_tosearch
+            ctrans = img_tosearch
 
-        #scale
-        if self.scale != 1:
-            imshape = ctrans_tosearch.shape
-            ctrans_tosearch = cv2.resize(ctrans_tosearch, (np.int(imshape[1] / self.scale), np.int(imshape[0] / self.scale)))
+        for scale in self.scale:
+            #scale
+            if scale != 1:
+                imshape = ctrans.shape
+                ctrans_tosearch = cv2.resize(ctrans, (np.int(imshape[1] / scale), np.int(imshape[0] / scale)))
+            else:
+                ctrans_tosearch = ctrans
+            # colorchannels
+            ch1 = ctrans_tosearch[:, :, 0]
+            ch2 = ctrans_tosearch[:, :, 1]
+            ch3 = ctrans_tosearch[:, :, 2]
 
-        ch1 = ctrans_tosearch[:, :, 0]
-        ch2 = ctrans_tosearch[:, :, 1]
-        ch3 = ctrans_tosearch[:, :, 2]
+            # Define blocks and steps as above
+            nxblocks = (ch1.shape[1] // self.pix_per_cell) - 1 # no of blocks in x-dir over image
+            nyblocks = (ch1.shape[0] // self.pix_per_cell) - 1 # no of blocks in y-dir over image
+            # 64 was the orginal sampling rate, with 8 cells and 8 pix per cell
+            window = 64
+            nblocks_per_window = (window // self.pix_per_cell) - 1
+            cells_per_step = 2  # Instead of overlap, define how many cells to step
+            nxsteps = (nxblocks - nblocks_per_window) // cells_per_step
+            nysteps = (nyblocks - nblocks_per_window) // cells_per_step
 
-        # Define blocks and steps as above
-        nxblocks = (ch1.shape[1] // self.pix_per_cell) - 1 # no of blocks in x-dir over image
-        nyblocks = (ch1.shape[0] // self.pix_per_cell) - 1 # no of blocks in y-dir over image
-        # 64 was the orginal sampling rate, with 8 cells and 8 pix per cell
-        window = 64
-        nblocks_per_window = (window // self.pix_per_cell) - 1
-        cells_per_step = 2  # Instead of overlap, define how many cells to step
-        nxsteps = (nxblocks - nblocks_per_window) // cells_per_step
-        nysteps = (nyblocks - nblocks_per_window) // cells_per_step
+            # Compute individual channel HOG features for the entire image
+            hog1 = self.get_hog_features(ch1, feature_vec=False)
+            hog2 = self.get_hog_features(ch2, feature_vec=False)
+            hog3 = self.get_hog_features(ch3, feature_vec=False)
 
-        # Compute individual channel HOG features for the entire image
-        hog1 = self.get_hog_features(ch1, feature_vec=False)
-        hog2 = self.get_hog_features(ch2, feature_vec=False)
-        hog3 = self.get_hog_features(ch3, feature_vec=False)
+            for xb in range(nxsteps): # indices in hog cells
+                for yb in range(nysteps):
+                    ypos = yb * cells_per_step
+                    xpos = xb * cells_per_step
+                    # Extract HOG for this patch
+                    hog_feat1 = hog1[ypos:ypos + nblocks_per_window, xpos:xpos + nblocks_per_window].ravel()
+                    hog_feat2 = hog2[ypos:ypos + nblocks_per_window, xpos:xpos + nblocks_per_window].ravel()
+                    hog_feat3 = hog3[ypos:ypos + nblocks_per_window, xpos:xpos + nblocks_per_window].ravel()
+                    hog_features = np.hstack((hog_feat1, hog_feat2, hog_feat3))
 
-        for xb in range(nxsteps): # indices in hog cells
-            for yb in range(nysteps):
-                ypos = yb * cells_per_step
-                xpos = xb * cells_per_step
-                # Extract HOG for this patch
-                hog_feat1 = hog1[ypos:ypos + nblocks_per_window, xpos:xpos + nblocks_per_window].ravel()
-                hog_feat2 = hog2[ypos:ypos + nblocks_per_window, xpos:xpos + nblocks_per_window].ravel()
-                hog_feat3 = hog3[ypos:ypos + nblocks_per_window, xpos:xpos + nblocks_per_window].ravel()
-                hog_features = np.hstack((hog_feat1, hog_feat2, hog_feat3))
+                    # index in pixelspace
+                    xleft = xpos * self.pix_per_cell
+                    ytop = ypos * self.pix_per_cell
 
-                # index in pixelspace
-                xleft = xpos * self.pix_per_cell
-                ytop = ypos * self.pix_per_cell
+                    # Extract the image patch
+                    subimg = cv2.resize(ctrans_tosearch[ytop:ytop + window, xleft:xleft + window], (64, 64))
 
-                # Extract the image patch
-                subimg = cv2.resize(ctrans_tosearch[ytop:ytop + window, xleft:xleft + window], (64, 64))
+                    # Get color features
+                    spatial_features = self.bin_spatial(subimg)
+                    hist_features = self.color_hist(subimg)
 
-                # Get color features
-                spatial_features = self.bin_spatial(subimg)
-                hist_features = self.color_hist(subimg)
+                    # Scale features and make a prediction
+                    test_features = self.scaler.transform(np.hstack((spatial_features, hist_features, hog_features)).reshape(1, -1))
+                    test_prediction = self.classifier.predict(test_features)
 
-                # Scale features and make a prediction
-                test_features = self.scaler.transform(np.hstack((spatial_features, hist_features, hog_features)).reshape(1, -1))
-                test_prediction = self.classifier.predict(test_features)
-
-                if test_prediction == 1:
-                    xbox_left = np.int(xleft * self.scale)
-                    ytop_draw = np.int(ytop * self.scale)
-                    win_draw = np.int(window * self.scale)
-                    cv2.rectangle(draw_img, (xbox_left, ytop_draw + self.y_start_stop[0]),
-                                  (xbox_left + win_draw, ytop_draw + win_draw + self.y_start_stop[0]), (0, 0, 255), 6)
-
-        return draw_img
+                    if test_prediction == 1:
+                        xbox_left = np.int(xleft * scale)
+                        ytop_draw = np.int(ytop * scale)
+                        win_draw = np.int(window * scale)
+                        if return_image:
+                            cv2.rectangle(draw_img, (xbox_left, ytop_draw + self.y_start_stop[0]),
+                                          (xbox_left + win_draw, ytop_draw + win_draw + self.y_start_stop[0]), (0, 0, 255), 6)
+                        heat[ytop_draw+self.y_start_stop[0]:ytop_draw+win_draw+self.y_start_stop[0], xbox_left:xbox_left+win_draw] += 1
+        self.heatmap.append(heat)
+        if return_image:
+            return draw_img
 
     def single_img_features(self, img):
         # 1) Define an empty list to receive features
@@ -175,28 +234,6 @@ class Classifier:
         # 9) Return concatenated array of features
         return np.concatenate(img_features)
 
-    # Define a function you will pass an image
-    # and the list of windows to be searched (output of slide_windows())
-    def search_windows(self, img, windows, classifier, scaler):
-        """..."""
-        # 1) Create an empty list to receive positive detection windows
-        on_windows = []
-        # 2) Iterate over all windows in the list
-        for window in windows:
-            # 3) Extract the test window from original image
-            test_img = cv2.resize(img[window[0][1]:window[1][1], window[0][0]:window[1][0]], (64, 64))
-            # 4) Extract features for that window using single_img_features()
-            features = self.single_img_features(test_img)
-            # 5) Scale extracted features to be fed to classifier
-            test_features = scaler.transform(np.array(features).reshape(1, -1))
-            # 6) Predict using your classifier
-            prediction = classifier.predict(test_features)
-            # 7) If positive (prediction == 1) then save the window
-            if prediction == 1:
-                on_windows.append(window)
-        # 8) Return windows for positive detections
-        return on_windows
-
     def readData(self):
         #TODO: hier aendern für die folder, in den listen pfade angeben, dabei train test split machen
         # Read in cars and notcars
@@ -205,9 +242,17 @@ class Classifier:
         class_1.extend(glob.glob('./trainingData/vehicles/vehicles/GTI_Left/*.png'))
         class_1.extend(glob.glob('./trainingData/vehicles/vehicles/GTI_MiddleClose/*.png'))
         class_1.extend(glob.glob('./trainingData/vehicles/vehicles/GTI_Right/*.png'))
+        class_1.extend(glob.glob('./trainingData/vehicles/vehicles/UdacityCar/*.png'))
 
-        class_2 = glob.glob('./trainingData/non-vehicles/non-vehicles/GTI/*.png')
-        class_2.extend(glob.glob('./trainingData/non-vehicles/non-vehicles/Extras/*.png'))
+        class_2=glob.glob('./trainingData/non-vehicles/non-vehicles/Extras/*.png')
+        class_2.extend(glob.glob('./trainingData/non-vehicles/non-vehicles/GTI/*.png'))
+        class_2.extend(glob.glob('./trainingData/non-vehicles/non-vehicles/UdacityNon_Car/*.png'))
+
+        #Udacity and KITTI
+        # class_1=glob.glob('./trainingData/vehicles/vehicles/UdacityCar/*.png')
+        # class_1.extend(glob.glob('./trainingData/vehicles/vehicles/KITTI_extracted/*.png'))
+        # class_2=glob.glob('./trainingData/non-vehicles/non-vehicles/UdacityNon_Car/*.png')
+        # class_2.extend(glob.glob('./trainingData/non-vehicles/non-vehicles/Extras/*.png'))
         return class_1, class_2
 
     def get_features(self, class_1, class_2):
@@ -242,19 +287,6 @@ class Classifier:
         # Check the prediction time for a single sample
         return svc
 
-    def predict_windows(self, image, classifier, X_scaler):
-
-        draw_image = np.copy(image)
-
-
-        windows = self.slide_window(image, x_start_stop=[None, None], y_start_stop=self.y_start_stop,
-                                    xy_window=(60, 60), xy_overlap=self.xy_overlap)
-
-        hot_windows = self.search_windows(image, windows, classifier, X_scaler)
-
-        window_img = self.draw_boxes(draw_image, hot_windows, color=(0, 0, 255), thick=6)
-        plt.figure()
-        plt.imshow(window_img)
 
     ###########################################
     def get_hog_features(self, img, vis=False, feature_vec=True):
@@ -333,48 +365,6 @@ class Classifier:
         # Return list of feature vectors
         return features
 
-    def slide_window(self, img, x_start_stop=[None, None], y_start_stop=[None, None], xy_window=(64, 64),
-                     xy_overlap=(0.2, 0.2)):
-        """Takes an image, start and stop positions in both x and y, window size (x and y
-        dimensions), and overlap fraction (for both x and y) (code taken from udacity class)"""
-        # If x and/or y start/stop positions not defined, set to image size
-        if x_start_stop[0] == None:
-            x_start_stop[0] = 0
-        if x_start_stop[1] == None:
-            x_start_stop[1] = img.shape[1]
-        if y_start_stop[0] == None:
-            y_start_stop[0] = 0
-        if y_start_stop[1] == None:
-            y_start_stop[1] = img.shape[0]
-        # Compute the span of the region to be searched
-        xspan = x_start_stop[1] - x_start_stop[0]
-        yspan = y_start_stop[1] - y_start_stop[0]
-        # Compute the number of pixels per step in x/y
-        nx_pix_per_step = np.int(xy_window[0] * (1 - xy_overlap[0]))
-        ny_pix_per_step = np.int(xy_window[1] * (1 - xy_overlap[1]))
-        # Compute the number of windows in x/y
-        nx_buffer = np.int(xy_window[0] * (xy_overlap[0]))
-        ny_buffer = np.int(xy_window[1] * (xy_overlap[1]))
-        nx_windows = np.int((xspan - nx_buffer) / nx_pix_per_step)
-        ny_windows = np.int((yspan - ny_buffer) / ny_pix_per_step)
-        # Initialize a list to append window positions to
-        window_list = []
-        # Loop through finding x and y window positions
-        # Note: you could vectorize this step, but in practice
-        # you'll be considering windows one by one with your
-        # classifier, so looping makes sense
-        for ys in range(ny_windows):
-            for xs in range(nx_windows):
-                # Calculate window position
-                startx = xs * nx_pix_per_step + x_start_stop[0]
-                endx = startx + xy_window[0]
-                starty = ys * ny_pix_per_step + y_start_stop[0]
-                endy = starty + xy_window[1]
-
-                # Append window position to list
-                window_list.append(((startx, starty), (endx, endy)))
-        # Return the list of windows
-        return window_list
 
     def draw_boxes(self, img, bboxes, color=(0, 0, 255), thick=6):
         """Define a function to draw bounding boxes (code taken from udacity class)"""
@@ -391,6 +381,7 @@ class Classifier:
 def main():
 
     Classifier().run_video()
+    #Classifier().run_images()
 # executes main() if script is executed directly as the main function and not loaded as module
 if __name__ == '__main__':
     main()
