@@ -13,7 +13,7 @@ class extractData:
         self.data = None
         self.img_size= img_size
         self.labels = labels
-        self.stepsize = 3 # use every Xth frame ()
+        self.stepsize = 4 # use every Xth frame ()
 
     def run(self):
         self.read_labels()
@@ -51,11 +51,18 @@ class extractData:
                 else:
                     self.save_images(img, bb_list, folder_label_true)
 
+    def equalize(self, img):
+        """equalize BGR Image"""
+        img_yuv = cv2.cvtColor(img, cv2.COLOR_BGR2YUV)
+        img_yuv[:, :, 0] = cv2.equalizeHist(img_yuv[:, :, 0])
+        return cv2.cvtColor(img_yuv, cv2.COLOR_YUV2BGR)
+
 
     def save_images(self, img_f, bboxes, folder,anti_bbox_size=256, antifolder=''):
         file = self.dataFolder+img_f
         img = cv2.imread(file)
-        img = np.dstack((cv2.equalizeHist(img[:,:,0]), cv2.equalizeHist(img[:,:,1]), cv2.equalizeHist(img[:,:,2])))
+
+        img = self.equalize(img)
         h,w = img.shape[:2]
         for idx, (xmin, ymin, xmax, ymax) in enumerate(bboxes):
             # only save sub-images if sides are larger than 64px
