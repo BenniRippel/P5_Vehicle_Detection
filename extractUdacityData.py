@@ -13,7 +13,8 @@ class extractData:
         self.data = None
         self.img_size= img_size
         self.labels = labels
-        self.stepsize = 4 # use every Xth frame ()
+        self.stepsize = 10 # use every Xth frame ()
+        self.num_of_anti = 2 # number of antiimages for every positive image
 
     def run(self):
         self.read_labels()
@@ -51,6 +52,7 @@ class extractData:
                 else:
                     self.save_images(img, bb_list, folder_label_true)
 
+
     def equalize(self, img):
         """equalize BGR Image"""
         img_yuv = cv2.cvtColor(img, cv2.COLOR_BGR2YUV)
@@ -78,9 +80,9 @@ class extractData:
 
                 # find anti-image
                 if antifolder:
-                    anti_image_found=False
+                    anti_image_found=0
                     counter = 0
-                    while not anti_image_found and counter<20:
+                    while (anti_image_found<self.num_of_anti) and counter<60:
                         # get random point, add second point with distance anti_bbox_size
                         p1 = (np.random.randint(0, w-anti_bbox_size-1), np.random.randint(0, h-anti_bbox_size-1))
                         p2 = (p1[0]+anti_bbox_size, p1[1]+anti_bbox_size)
@@ -90,9 +92,9 @@ class extractData:
                             #cv2.rectangle(img, p1, p2, (0, 0, 255), 5)
                             #plt.imshow(img)
                             #plt.show()
-                            filename = antifolder + '/' + img_f[:-4] + '_' + str(idx) + '.png'
+                            filename = antifolder + '/' + img_f[:-4] + '_' + str(idx)+'_'+str(anti_image_found) + '.png'
                             cv2.imwrite(filename, slice)
-                            anti_image_found=True
+                            anti_image_found +=1
                             counter +=1
 
     def no_overlap_check(self, p1, p2, bboxes):

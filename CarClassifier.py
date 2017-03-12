@@ -15,8 +15,8 @@ from sklearn.model_selection import train_test_split
 
 class Classifier:
     def __init__(self):
-        self.color_space = 'HLS'  # Can be RGB, HSV, LUV, HLS, YUV, YCrCb
-        self.color_space_feat = 'HLS'
+        self.color_space = 'YCrCb'  # Can be RGB, HSV, LUV, HLS, YUV, YCrCb
+        self.color_space_feat = 'YCrCb'
         self.orient = 9  # HOG orientations
         self.pix_per_cell = 8  # HOG pixels per cell
         self.cell_per_block = 2  # HOG cells per block
@@ -24,18 +24,18 @@ class Classifier:
         self.spatial_size = (32, 32)  # Spatial binning dimensions
         self.hist_bins = 64  # Number of histogram bins
         self.spatial_feat = False  # Spatial features on or off
-        self.hist_feat = True  # Histogram features on or off
+        self.hist_feat = False  # Histogram features on or off
         self.hog_feat = True  # HOG features on or off
         self.y_start_stop = [400, 656]  # Min and max in y to search in slide_window()
-        self.scale = [1.0, 1.5, 1.8] # max 1.5
+        self.scale = [1.0, 1.5] # max 1.5
 
         self.scaler = []
         self.classifier = []
 
         self.heatmap = deque(maxlen=10)
-        self.heat_thresh = 10
+        self.heat_thresh = 17 #17
 
-    def run_video(self, video='./test_video.mp4'):
+    def run_video(self, video='./project_video.mp4'):
         """Run the Vehicle Detection Pipeline on a input video"""
         car_list, noncar_list = self.readData()
         X_train, X_test, y_train, y_test, self.scaler = self.get_features(car_list, noncar_list)
@@ -57,12 +57,12 @@ class Classifier:
         h, w, c = frame.shape
         h_n = int(h / 3)
         w_n = int(w / 3)
-        heatmap = np.zeros_like(frame[:,:,0]).astype('uint16')
+        heatmap = np.zeros_like(frame[:,:,0])
         for a in self.heatmap:
             heatmap +=a
 
-        img = heatmap/np.max(heatmap)*255
-        img = np.dstack((img * 255, img * 255, img * 255)).astype('uint8')
+        img = heatmap/np.max(heatmap)
+        img = np.dstack((img * 255, img * 255, img * 255))
         img = cv2.resize(img, (w_n, h_n), interpolation=cv2.INTER_AREA)
         frame[:h_n, -w_n:, :] = img
         return frame
@@ -76,7 +76,7 @@ class Classifier:
         print(np.max(X_train))
         self.classifier = self.train_Classifier(X_train, y_train, X_test, y_test)
 
-        tests = glob.glob('./test_images/*.jpg')
+        tests = glob.glob('./test_images/vlc*.png')
         fig = plt.figure()
         idx = 1
 
@@ -110,8 +110,9 @@ class Classifier:
         # find contours and plot their bounding rectangles
         im2, contours, hierarchy = cv2.findContours(heatmap.astype('uint8'), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         for cnt in contours:
-            x, y, w, h = cv2.boundingRect(cnt)
-            cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 6)
+            if cv2.contourArea(cnt)>2048:
+                x, y, w, h = cv2.boundingRect(cnt)
+                cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 6)
         return img
 
     def find_cars(self, img, return_image=False):
@@ -197,7 +198,7 @@ class Classifier:
                     else:
                         hist_features = []
                     # Scale features and make a prediction
-                    test_features = self.scaler.transform(np.hstack((spatial_features, hist_features, hog_features)).reshape(1, -1))
+                    test_features =self.scaler.transform(np.hstack((spatial_features, hist_features, hog_features)).reshape(1, -1))
                     test_prediction = self.classifier.predict(test_features)
 
                     if test_prediction == 1:
@@ -217,21 +218,21 @@ class Classifier:
         #TODO: hier aendern für die folder, in den listen pfade angeben, dabei train test split machen
         # Read in cars and notcars
         class_1 = glob.glob('./trainingData/vehicles/vehicles/KITTI_extracted/*.png')
-        # class_1.extend(glob.glob('./trainingData/vehicles/vehicles/GTI_Far/*.png'))
-        # class_1.extend(glob.glob('./trainingData/vehicles/vehicles/GTI_Left/*.png'))
-        # class_1.extend(glob.glob('./trainingData/vehicles/vehicles/GTI_MiddleClose/*.png'))
-        # class_1.extend(glob.glob('./trainingData/vehicles/vehicles/GTI_Right/*.png'))
-        # class_1.extend(glob.glob('./trainingData/vehicles/vehicles/UdacityCar/*.png'))
+        class_1.extend(glob.glob('./trainingData/vehicles/vehicles/GTI_Far/*.png'))
+        class_1.extend(glob.glob('./trainingData/vehicles/vehicles/GTI_Left/*.png'))
+        class_1.extend(glob.glob('./trainingData/vehicles/vehicles/GTI_MiddleClose/*.png'))
+        class_1.extend(glob.glob('./trainingData/vehicles/vehicles/GTI_Right/*.png'))
+        #class_1.extend(glob.glob('./trainingData/vehicles/vehicles/UdacityCar/*.png'))
 
         class_2 = glob.glob('./trainingData/non-vehicles/non-vehicles/Extras/*.png')
-        # class_2.extend(glob.glob('./trainingData/non-vehicles/non-vehicles/GTI/*.png'))
-        # class_2.extend(glob.glob('./trainingData/non-vehicles/non-vehicles/UdacityNon_Car/*.png'))
+        class_2.extend(glob.glob('./trainingData/non-vehicles/non-vehicles/GTI/*.png'))
+        #class_2.extend(glob.glob('./trainingData/non-vehicles/non-vehicles/UdacityNon_Car/*.png'))
 
         # # Udacity and KITTI
-        # class_1=glob.glob('./trainingData/vehicles/vehicles/UdacityCar/*.png')
-        # class_1.extend(glob.glob('./trainingData/vehicles/vehicles/KITTI_extracted/*.png'))
-        # class_2=glob.glob('./trainingData/non-vehicles/non-vehicles/UdacityNon_Car/*.png')
-        # class_2.extend(glob.glob('./trainingData/non-vehicles/non-vehicles/Extras/*.png'))
+        #class_1=glob.glob('./trainingData/vehicles/vehicles/UdacityCar/*.png')
+        #class_1.extend(glob.glob('./trainingData/vehicles/vehicles/KITTI_extracted/*.png'))
+        #class_2=glob.glob('./trainingData/non-vehicles/non-vehicles/UdacityNon_Car/*.png')
+        #class_2.extend(glob.glob('./trainingData/non-vehicles/non-vehicles/Extras/*.png'))
         return class_1, class_2
 
     def get_features(self, class_1, class_2):
@@ -256,7 +257,7 @@ class Classifier:
     def train_Classifier(self, X_train, y_train, X_test, y_test):
         """Trains a Classifier"""
         # Use a linear SVC
-        svc = LinearSVC(class_weight='balanced')
+        svc = LinearSVC()
         # Check the training time for the SVC
         t = time.time()
         svc.fit(X_train, y_train)
@@ -267,6 +268,11 @@ class Classifier:
         # Check the prediction time for a single sample
         return svc
 
+    def equalize(self, img):
+        """equalize BGR Image"""
+        img_yuv = cv2.cvtColor(img, cv2.COLOR_BGR2YUV)
+        img_yuv[:, :, 0] = cv2.equalizeHist(img_yuv[:, :, 0])
+        return cv2.cvtColor(img_yuv, cv2.COLOR_YUV2BGR)
 
     ###########################################
     def get_hog_features(self, img, vis=False, feature_vec=True):
@@ -319,6 +325,9 @@ class Classifier:
             file_features = []
             # Read in each one by one
             image = cv2.imread(file)
+            # equalize histogram
+            image = self.equalize(image)
+
             # apply color conversion if other than 'BGR'
             if self.color_space != 'BGR':
                     conv_to = eval('cv2.COLOR_BGR2'+self.color_space)
