@@ -1,5 +1,11 @@
-# Plan für train test split:
-#   Shuffle KITTI daten, davon 30% als testsplit, rest mit den anderen ordnern kombinieren als training set
+#Probier folgendes
+# alle 20 frames hog suche mit feinen/vielen scales -> roi finden
+# in roi gftt fuer optical flow finden
+# roi mit optical flow tracken, achtung: outlier detection implementieren für opt-flow-features
+# fuer jeden frame die roi mit HOG bestaetigen
+# roi erstplotten wenn min 5 frames getracked wurde
+
+
 from moviepy.editor import VideoFileClip
 import matplotlib.pyplot as plt
 import numpy as np
@@ -7,11 +13,10 @@ import cv2
 import glob
 import time
 from collections import deque
-from sklearn.svm import LinearSVC
+from sklearn.svm import LinearSVC, SVC
 from sklearn.preprocessing import StandardScaler
 from skimage.feature import hog
-from sklearn.model_selection import train_test_split
-
+from sklearn.model_selection import GridSearchCV
 
 class Classifier:
     def __init__(self):
@@ -20,6 +25,7 @@ class Classifier:
         self.orient = 9  # HOG orientations
         self.pix_per_cell = 8  # HOG pixels per cell
         self.cell_per_block = 2  # HOG cells per block
+        self.cells_per_step = 2  # Instead of overlap, define how many cells to step
         self.hog_channel = 'ALL'  # Can be 0, 1, 2, or "ALL"
         self.spatial_size = (32, 32)  # Spatial binning dimensions
         self.hist_bins = 64  # Number of histogram bins
@@ -35,10 +41,18 @@ class Classifier:
         self.heatmap = deque(maxlen=10)
         self.heat_thresh = 17 #17
 
-    def run_video(self, video='./project_video.mp4'):
+    def choose_classifier(self):
+        car_list_train, car_list_test, noncar_list_train, noncar_list_test = self.readData()
+        X_train, X_test, y_train, y_test, self.scaler = self.get_features(car_list_train, car_list_test,
+                                                                          noncar_list_train, noncar_list_test)
+        self.get_best_classifier(X_train, X_test, y_train, y_test)
+
+    def run_video(self, video='./test_video.mp4'):
         """Run the Vehicle Detection Pipeline on a input video"""
-        car_list, noncar_list = self.readData()
-        X_train, X_test, y_train, y_test, self.scaler = self.get_features(car_list, noncar_list)
+
+        car_list_train, car_list_test, noncar_list_train, noncar_list_test = self.readData()
+        X_train, X_test, y_train, y_test, self.scaler = self.get_features(car_list_train, car_list_test,
+                                                                          noncar_list_train, noncar_list_test)
         self.classifier = self.train_Classifier(X_train, y_train, X_test, y_test)
 
         out_file = video[:-4] + '_output.mp4'  # output file
@@ -69,8 +83,9 @@ class Classifier:
 
     def run_images(self):
         """Run on example images"""
-        car_list, noncar_list = self.readData()
-        X_train, X_test, y_train, y_test, self.scaler = self.get_features(car_list, noncar_list)
+        car_list_train, car_list_test, noncar_list_train, noncar_list_test = self.readData()
+        X_train, X_test, y_train, y_test, self.scaler = self.get_features(car_list_train, car_list_test,
+                                                                          noncar_list_train, noncar_list_test)
         print(X_train.shape, y_train.shape)
         print(X_test.shape, y_test.shape)
         print(np.max(X_train))
@@ -157,14 +172,13 @@ class Classifier:
             ch3 = HOG_color_img[:, :, 2]
 
             # Define blocks and steps
-            nxblocks = (ch1.shape[1] // self.pix_per_cell) - 1 # no of blocks in x-dir over image
-            nyblocks = (ch1.shape[0] // self.pix_per_cell) - 1 # no of blocks in y-dir over image
+            nxblocks = (ch1.shape[1] // self.pix_per_cell) - (self.cell_per_block- 1) # no of blocks in x-dir over image
+            nyblocks = (ch1.shape[0] // self.pix_per_cell) - (self.cell_per_block-1) # no of blocks in y-dir over image
             # 64 was the orginal sampling rate, with 8 cells and 8 pix per cell
             window = 64
             nblocks_per_window = (window // self.pix_per_cell) - 1
-            cells_per_step = 2  # Instead of overlap, define how many cells to step
-            nxsteps = (nxblocks - nblocks_per_window) // cells_per_step
-            nysteps = (nyblocks - nblocks_per_window) // cells_per_step
+            nxsteps = (nxblocks - nblocks_per_window) // self.cells_per_step
+            nysteps = (nyblocks - nblocks_per_window) // self.cells_per_step
 
             # Compute individual channel HOG features for the entire image
             hog1 = self.get_hog_features(ch1, feature_vec=False)
@@ -173,8 +187,8 @@ class Classifier:
 
             for xb in range(nxsteps): # indices in hog cells
                 for yb in range(nysteps):
-                    ypos = yb * cells_per_step
-                    xpos = xb * cells_per_step
+                    ypos = yb * self.cells_per_step
+                    xpos = xb * self.cells_per_step
                     # Extract HOG for this patch
                     hog_feat1 = hog1[ypos:ypos + nblocks_per_window, xpos:xpos + nblocks_per_window].ravel()
                     hog_feat2 = hog2[ypos:ypos + nblocks_per_window, xpos:xpos + nblocks_per_window].ravel()
@@ -215,44 +229,51 @@ class Classifier:
 
 
     def readData(self):
-        #TODO: hier aendern für die folder, in den listen pfade angeben, dabei train test split machen
+        """take 25% of the kitti data and 25% of the non-vehicles/Extras for testing, add rest to training data"""
         # Read in cars and notcars
-        class_1 = glob.glob('./trainingData/vehicles/vehicles/KITTI_extracted/*.png')
-        class_1.extend(glob.glob('./trainingData/vehicles/vehicles/GTI_Far/*.png'))
-        class_1.extend(glob.glob('./trainingData/vehicles/vehicles/GTI_Left/*.png'))
-        class_1.extend(glob.glob('./trainingData/vehicles/vehicles/GTI_MiddleClose/*.png'))
-        class_1.extend(glob.glob('./trainingData/vehicles/vehicles/GTI_Right/*.png'))
-        #class_1.extend(glob.glob('./trainingData/vehicles/vehicles/UdacityCar/*.png'))
+        kitti = glob.glob('./trainingData/vehicles/vehicles/KITTI_extracted/*.png')
+        length_kitti = len(kitti)
+        class_1_test = kitti[int(0.75*length_kitti):]
+        class_1_train = kitti[:int(0.75*length_kitti)]
+        class_1_train.extend(glob.glob('./trainingData/vehicles/vehicles/GTI_Far/*.png'))
+        class_1_train.extend(glob.glob('./trainingData/vehicles/vehicles/GTI_Left/*.png'))
+        class_1_train.extend(glob.glob('./trainingData/vehicles/vehicles/GTI_MiddleClose/*.png'))
+        class_1_train.extend(glob.glob('./trainingData/vehicles/vehicles/GTI_Right/*.png'))
 
-        class_2 = glob.glob('./trainingData/non-vehicles/non-vehicles/Extras/*.png')
-        class_2.extend(glob.glob('./trainingData/non-vehicles/non-vehicles/GTI/*.png'))
-        #class_2.extend(glob.glob('./trainingData/non-vehicles/non-vehicles/UdacityNon_Car/*.png'))
+        extras = glob.glob('./trainingData/non-vehicles/non-vehicles/Extras/*.png')
+        length_extras = len(extras)
+        class_2_test = extras[int(0.75*length_kitti):]
+        class_2_train = extras[:int(0.75*length_kitti)]
+        class_2_train.extend(glob.glob('./trainingData/non-vehicles/non-vehicles/GTI/*.png'))
 
-        # # Udacity and KITTI
-        #class_1=glob.glob('./trainingData/vehicles/vehicles/UdacityCar/*.png')
-        #class_1.extend(glob.glob('./trainingData/vehicles/vehicles/KITTI_extracted/*.png'))
-        #class_2=glob.glob('./trainingData/non-vehicles/non-vehicles/UdacityNon_Car/*.png')
-        #class_2.extend(glob.glob('./trainingData/non-vehicles/non-vehicles/Extras/*.png'))
-        return class_1, class_2
+        return class_1_train, class_1_test, class_2_train, class_2_test
 
-    def get_features(self, class_1, class_2):
+    def get_features(self, class_1_train, class_1_test, class_2_train, class_2_test):
         """Loads images and extracts the features, splits into train and testset"""
         # extract positive and negative features and stack them
-        class_1_feats = self.extract_features(class_1)
-        class_2_feats = self.extract_features(class_2)
-        X = np.vstack((class_1_feats, class_2_feats)).astype(np.float64)
+        class_1_feats_train = self.extract_features(class_1_train)
+        class_2_feats_train = self.extract_features(class_2_train)
+        X_train = np.vstack((class_1_feats_train, class_2_feats_train)).astype(np.float64)
+        class_1_feats_test = self.extract_features(class_1_test)
+        class_2_feats_test = self.extract_features(class_2_test)
+        X_test = np.vstack((class_1_feats_test, class_2_feats_test)).astype(np.float64)
         # Fit a per-column scaler
-        X_scaler = StandardScaler().fit(X)
+        X_scaler = StandardScaler().fit(X_train)
         # Apply the scaler to X
-        scaled_X = X_scaler.transform(X)
+        scaled_X_train = X_scaler.transform(X_train)
+        scaled_X_test = X_scaler.transform(X_test)
 
         # Define the labels vector
-        y = np.hstack((np.ones(len(class_1_feats)), np.zeros(len(class_2_feats))))
+        y_train = np.hstack((np.ones(len(class_1_feats_train)), np.zeros(len(class_2_feats_train))))
+        y_test = np.hstack((np.ones(len(class_1_feats_test)), np.zeros(len(class_2_feats_test))))
 
-        # Split up data into randomized training and test sets
-        rand_state = 43
-        X_train, X_test, y_train, y_test = train_test_split(scaled_X, y, test_size=0.2, random_state=rand_state)
-        return X_train, X_test, y_train, y_test, X_scaler
+        # Shuffle both sets
+        idx_train = np.arange(len(y_train))
+        np.random.shuffle(idx_train)
+        idx_test = np.arange(len(y_test))
+        np.random.shuffle(idx_test)
+
+        return scaled_X_train[idx_train], scaled_X_test[idx_test], y_train[idx_train], y_test[idx_test], X_scaler
 
     def train_Classifier(self, X_train, y_train, X_test, y_test):
         """Trains a Classifier"""
@@ -267,6 +288,14 @@ class Classifier:
         print('Test Accuracy of SVC = ', round(svc.score(X_test, y_test), 4))
         # Check the prediction time for a single sample
         return svc
+
+    def get_best_classifier(self, X_train, y_train, X_test, y_test):
+        """Grid search classifier for best result"""
+        paras = {'kernel': ('linear', 'rbf'), 'C': [0.1, 1, 10, 100]}
+        svm = SVC()
+        clf = GridSearchCV(svm, paras, n_jobs=3, cv=[X_test, y_test])
+        clf.fit(X_train, y_train)
+        sorted(clf.cv_results_.keys())
 
     def equalize(self, img):
         """equalize BGR Image"""

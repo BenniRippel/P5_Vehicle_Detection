@@ -55,9 +55,32 @@ Here is an example using the `YCrCb` color space and HOG parameters of `orientat
 
 I tried various combinations of parameters and...
 
+orientations = 9
+less orientations -> more FP, cars get detected less often; more orientations -> no improvement.
+
+pix_per_cell = 8  # HOG pixels per cell
+smaller amount of pixels per cell: Features seem to detect too much noise and thus creates more FP, 
+more pix per cell capture not enough detail
+
+
+cell_per_block = 2  # HOG cells per block
+block width for normalization. as images were equalized, normalization should not be important
+
+hog_channel = 'ALL'  # Can be 0, 1, 2, or "ALL"
+
+
 ####3. Describe how (and identify where in your code) you trained a classifier using your selected HOG features (and color features if you used them).
 
 I trained a linear SVM using...
+
+only HOG. Intensive experiments were conducted using different color spaces for HOG and for color based features 
+(Histograms and spatial features). When the image pixels of the test images are plotted in different color spaces, it 
+becomes evident that the white and black pixels of the cars can't be isolated from the other pixels (not linear 
+separable). Consequently, color based features resulted in more false positives, as well as in more false negatives for 
+either the black or the white car (dependend on the color space). Relying on HOG only has several advantages. The 
+detections don't depend on car color and thus decrease the influence of lighting conditions on the classifier. Furthermore, 
+  a smaller amount of features to extract decreases the required computational load for training and prediciton.
+  
 
 ###Sliding Window Search
 
