@@ -2,9 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="dd707703-be82-475f-b7cc-b8d16856790f" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/test_video_output.mp4" afterPath="$PROJECT_DIR$/test_video_output.mp4" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/CarClassifier.py" afterPath="$PROJECT_DIR$/CarClassifier.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/writeup_template.md" afterPath="$PROJECT_DIR$/writeup_template.md" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -25,12 +23,12 @@
       <file leaf-file-name="CarClassifier.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/CarClassifier.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="259">
-              <caret line="299" column="12" lean-forward="false" selection-start-line="299" selection-start-column="12" selection-end-line="299" selection-end-column="12" />
+            <state relative-caret-position="252">
+              <caret line="552" column="27" lean-forward="true" selection-start-line="552" selection-start-column="27" selection-end-line="552" selection-end-column="27" />
               <folding>
                 <element signature="e#321#361#0" expanded="true" />
-                <element signature="e#2911#3124#0" expanded="false" />
-                <element signature="e#3168#3646#0" expanded="false" />
+                <element signature="e#2912#3125#0" expanded="false" />
+                <element signature="e#3169#3647#0" expanded="false" />
               </folding>
             </state>
           </provider>
@@ -39,7 +37,7 @@
       <file leaf-file-name="blabl.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/blabl.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="387">
+            <state relative-caret-position="450">
               <caret line="33" column="0" lean-forward="false" selection-start-line="33" selection-start-column="0" selection-end-line="33" selection-end-column="0" />
               <folding>
                 <marker date="1489178608556" expanded="false" signature="0:7" ph="import ..." />
@@ -51,9 +49,9 @@
       <file leaf-file-name="writeup_template.md" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/writeup_template.md">
           <provider selected="true" editor-type-id="split-provider[text-editor;markdown-preview-editor]">
-            <state split_layout="FIRST">
-              <first_editor relative-caret-position="526">
-                <caret line="76" column="45" lean-forward="true" selection-start-line="76" selection-start-column="45" selection-end-line="76" selection-end-column="45" />
+            <state split_layout="SECOND">
+              <first_editor relative-caret-position="15">
+                <caret line="76" column="45" lean-forward="false" selection-start-line="76" selection-start-column="45" selection-end-line="76" selection-end-column="45" />
                 <folding />
               </first_editor>
               <second_editor />
@@ -126,6 +124,8 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
+      <pane id="Scope" />
+      <pane id="Scratches" />
       <pane id="ProjectPane">
         <subPane>
           <PATH>
@@ -148,14 +148,12 @@
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
             <PATH_ELEMENT>
-              <option name="myItemId" value="test_images" />
+              <option name="myItemId" value="output_images" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PsiDirectoryNode" />
             </PATH_ELEMENT>
           </PATH>
         </subPane>
       </pane>
-      <pane id="Scratches" />
-      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -363,7 +361,7 @@
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.28328174" sideWeight="0.4968701" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="Terminal" active="true" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.30804953" sideWeight="0.4968701" order="7" side_tool="false" content_ui="tabs" />
+      <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.30804953" sideWeight="0.4968701" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
@@ -396,8 +394,8 @@
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#321#361#0" expanded="true" />
-            <element signature="e#2911#3124#0" expanded="false" />
-            <element signature="e#3168#3646#0" expanded="false" />
+            <element signature="e#2912#3125#0" expanded="false" />
+            <element signature="e#3169#3647#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -437,8 +435,8 @@
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#321#361#0" expanded="true" />
-            <element signature="e#2911#3124#0" expanded="false" />
-            <element signature="e#3168#3646#0" expanded="false" />
+            <element signature="e#2912#3125#0" expanded="false" />
+            <element signature="e#3169#3647#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -478,8 +476,8 @@
           <caret line="34" column="38" lean-forward="false" selection-start-line="34" selection-start-column="38" selection-end-line="34" selection-end-column="38" />
           <folding>
             <element signature="e#321#361#0" expanded="true" />
-            <element signature="e#2911#3124#0" expanded="false" />
-            <element signature="e#3168#3646#0" expanded="false" />
+            <element signature="e#2912#3125#0" expanded="false" />
+            <element signature="e#3169#3647#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -509,8 +507,8 @@
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#321#361#0" expanded="true" />
-            <element signature="e#2911#3124#0" expanded="false" />
-            <element signature="e#3168#3646#0" expanded="false" />
+            <element signature="e#2912#3125#0" expanded="false" />
+            <element signature="e#3169#3647#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -529,8 +527,8 @@
           <caret line="3" column="0" lean-forward="false" selection-start-line="3" selection-start-column="0" selection-end-line="3" selection-end-column="0" />
           <folding>
             <element signature="e#321#361#0" expanded="true" />
-            <element signature="e#2911#3124#0" expanded="false" />
-            <element signature="e#3168#3646#0" expanded="false" />
+            <element signature="e#2912#3125#0" expanded="false" />
+            <element signature="e#3169#3647#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -549,8 +547,8 @@
           <caret line="3" column="0" lean-forward="false" selection-start-line="3" selection-start-column="0" selection-end-line="3" selection-end-column="31" />
           <folding>
             <element signature="e#321#361#0" expanded="true" />
-            <element signature="e#2911#3124#0" expanded="false" />
-            <element signature="e#3168#3646#0" expanded="false" />
+            <element signature="e#2912#3125#0" expanded="false" />
+            <element signature="e#3169#3647#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -561,8 +559,8 @@
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#321#361#0" expanded="true" />
-            <element signature="e#2911#3124#0" expanded="false" />
-            <element signature="e#3168#3646#0" expanded="false" />
+            <element signature="e#2912#3125#0" expanded="false" />
+            <element signature="e#3169#3647#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -573,8 +571,8 @@
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#321#361#0" expanded="true" />
-            <element signature="e#2911#3124#0" expanded="false" />
-            <element signature="e#3168#3646#0" expanded="false" />
+            <element signature="e#2912#3125#0" expanded="false" />
+            <element signature="e#3169#3647#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -610,6 +608,16 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/GrayCarClassifier.py" />
+    <entry file="file://$PROJECT_DIR$/blabl.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="450">
+          <caret line="33" column="0" lean-forward="false" selection-start-line="33" selection-start-column="0" selection-end-line="33" selection-end-column="0" />
+          <folding>
+            <marker date="1489178608556" expanded="false" signature="0:7" ph="import ..." />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/extractUdacityData.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="30">
@@ -618,35 +626,30 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/blabl.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="387">
-          <caret line="33" column="0" lean-forward="false" selection-start-line="33" selection-start-column="0" selection-end-line="33" selection-end-column="0" />
-          <folding>
-            <marker date="1489178608556" expanded="false" signature="0:7" ph="import ..." />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/writeup_template.md">
       <provider selected="true" editor-type-id="split-provider[text-editor;markdown-preview-editor]">
-        <state split_layout="FIRST">
-          <first_editor relative-caret-position="526">
-            <caret line="76" column="45" lean-forward="true" selection-start-line="76" selection-start-column="45" selection-end-line="76" selection-end-column="45" />
+        <state split_layout="SECOND">
+          <first_editor relative-caret-position="15">
+            <caret line="76" column="45" lean-forward="false" selection-start-line="76" selection-start-column="45" selection-end-line="76" selection-end-column="45" />
             <folding />
           </first_editor>
           <second_editor />
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/output_images/HOG_Features_YCrCb_.png">
+      <provider selected="true" editor-type-id="images">
+        <state />
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/CarClassifier.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="259">
-          <caret line="299" column="12" lean-forward="false" selection-start-line="299" selection-start-column="12" selection-end-line="299" selection-end-column="12" />
+        <state relative-caret-position="252">
+          <caret line="552" column="27" lean-forward="true" selection-start-line="552" selection-start-column="27" selection-end-line="552" selection-end-column="27" />
           <folding>
             <element signature="e#321#361#0" expanded="true" />
-            <element signature="e#2911#3124#0" expanded="false" />
-            <element signature="e#3168#3646#0" expanded="false" />
+            <element signature="e#2912#3125#0" expanded="false" />
+            <element signature="e#3169#3647#0" expanded="false" />
           </folding>
         </state>
       </provider>

@@ -41,6 +41,7 @@ class Classifier:
         self.heatmap = deque(maxlen=10)
         self.heat_thresh = 17 #17
 
+
     def choose_classifier(self):
         car_list_train, car_list_test, noncar_list_train, noncar_list_test = self.readData()
         X_train, X_test, y_train, y_test, self.scaler = self.get_features(car_list_train, car_list_test,
@@ -386,10 +387,192 @@ class Classifier:
         # Return list of feature vectors
         return features
 
+    def example_plots_HOG(self, colorspace='YCrCb'):
+        """Create example images of HOG Features for cars and noncars for all relevant channels"""
+        # load random images
+        car = glob.glob('./trainingData/vehicles/vehicles/KITTI_extracted/*.png')
+        noncar =glob.glob('./trainingData/non-vehicles/non-vehicles/Extras/*.png')
+        rnd_idx_car = np.random.randint(len(car)-1)
+        rnd_idx_noncar = np.random.randint(len(noncar)-1)
+        car_img = cv2.imread(car[rnd_idx_car])
+        noncar_img = cv2.imread(noncar[rnd_idx_noncar])
+        # convert to colorspace
+        conv=eval('cv2.COLOR_BGR2'+colorspace)
+        car_cs = cv2.cvtColor(car_img, conv)
+        noncar_cs = cv2.cvtColor(noncar_img, conv)
+
+        # plot
+        fig=plt.figure()
+        fig.suptitle('HOG Features for different color channels of the colorspace '+colorspace, fontsize=16)
+        #rgb car
+        fig.add_subplot(4, 4, 1)
+        plt.imshow(cv2.cvtColor(car_img, cv2.COLOR_BGR2RGB))
+        plt.title('Car RBG', fontsize=8)
+        plt.axis('off')
+
+        #colorspace car
+        fig.add_subplot(4, 4, 2)
+        plt.imshow(car_cs)
+        plt.title('Car '+colorspace, fontsize=8)
+        plt.axis('off')
+
+        #rgb noncar
+        fig.add_subplot(4, 4, 3)
+        plt.imshow(cv2.cvtColor(noncar_img, cv2.COLOR_BGR2RGB))
+        plt.title('Non-Car RBG', fontsize=8)
+        plt.axis('off')
+
+        #colorspace noncar
+        fig.add_subplot(4, 4, 4)
+        plt.imshow(noncar_cs)
+        plt.title('Non-Car '+colorspace, fontsize=8)
+        plt.axis('off')
+
+        # colorspace car channel 0
+        fig.add_subplot(4,4,5)
+        plt.imshow(car_cs[:,:,0], cmap='gray')
+        plt.title('Car'+colorspace+' channel 0', fontsize=8)
+        plt.axis('off')
+
+        # colorspace car channel 0 HOG Feats
+        fig.add_subplot(4,4,6)
+        plt.imshow( hog(car_cs[:,:,0], orientations=self.orient,
+                                      pixels_per_cell=(self.pix_per_cell, self.pix_per_cell),
+                                      cells_per_block=(self.cell_per_block, self.cell_per_block),
+                                      transform_sqrt=True,
+                                      visualise=True, feature_vector=False)[1] ,cmap='gray')
+        plt.title('Car'+colorspace+' channel 0 HOG', fontsize=8)
+        plt.axis('off')
+
+        # colorspace noncar channel 0
+        fig.add_subplot(4,4,7)
+        plt.imshow(noncar_cs[:,:,0], cmap='gray')
+        plt.title('Non-Car'+colorspace+' channel 0', fontsize=8)
+        plt.axis('off')
+
+        # colorspace noncar channel 0 HOG Feats
+        fig.add_subplot(4,4,8)
+        plt.imshow( hog(noncar_cs[:,:,0], orientations=self.orient,
+                                      pixels_per_cell=(self.pix_per_cell, self.pix_per_cell),
+                                      cells_per_block=(self.cell_per_block, self.cell_per_block),
+                                      transform_sqrt=True,
+                                      visualise=True, feature_vector=False)[1] ,cmap='gray')
+        plt.title('Non-Car'+colorspace+' channel 0 HOG', fontsize=8)
+        plt.axis('off')
+
+        # colorspace car channel 1
+        fig.add_subplot(4,4,9)
+        plt.imshow(car_cs[:,:,1], cmap='gray')
+        plt.title('Car'+colorspace+' channel 1', fontsize=8)
+        plt.axis('off')
+
+        # colorspace car channel 1 HOG Feats
+        fig.add_subplot(4,4,10)
+        plt.imshow( hog(car_cs[:,:,1], orientations=self.orient,
+                                      pixels_per_cell=(self.pix_per_cell, self.pix_per_cell),
+                                      cells_per_block=(self.cell_per_block, self.cell_per_block),
+                                      transform_sqrt=True,
+                                      visualise=True, feature_vector=False)[1] ,cmap='gray')
+        plt.title('Car'+colorspace+' channel 1 HOG', fontsize=8)
+        plt.axis('off')
+
+        # colorspace noncar channel 1
+        fig.add_subplot(4,4,11)
+        plt.imshow(noncar_cs[:,:,1], cmap='gray')
+        plt.title('Non-Car'+colorspace+' channel 1', fontsize=8)
+        plt.axis('off')
+
+        # colorspace noncar channel 1 HOG Feats
+        fig.add_subplot(4,4,12)
+        plt.imshow( hog(noncar_cs[:,:,1], orientations=self.orient,
+                                      pixels_per_cell=(self.pix_per_cell, self.pix_per_cell),
+                                      cells_per_block=(self.cell_per_block, self.cell_per_block),
+                                      transform_sqrt=True,
+                                      visualise=True, feature_vector=False)[1] ,cmap='gray')
+        plt.title('Non-Car'+colorspace+' channel 1 HOG', fontsize=8)
+        plt.axis('off')
+
+        # colorspace car channel 2
+        fig.add_subplot(4,4,13)
+        plt.imshow(car_cs[:,:,2], cmap='gray')
+        plt.title('Car'+colorspace+' channel 2', fontsize=8)
+        plt.axis('off')
+
+        # colorspace car channel 2 HOG Feats
+        fig.add_subplot(4,4,14)
+        plt.imshow( hog(car_cs[:,:,2], orientations=self.orient,
+                                      pixels_per_cell=(self.pix_per_cell, self.pix_per_cell),
+                                      cells_per_block=(self.cell_per_block, self.cell_per_block),
+                                      transform_sqrt=True,
+                                      visualise=True, feature_vector=False)[1] ,cmap='gray')
+        plt.title('Car'+colorspace+' channel 2 HOG', fontsize=8)
+        plt.axis('off')
+
+        # colorspace noncar channel 2
+        fig.add_subplot(4,4,15)
+        plt.imshow(noncar_cs[:,:,2], cmap='gray')
+        plt.title('Non-Car'+colorspace+' channel 2', fontsize=8)
+        plt.axis('off')
+
+        # colorspace noncar channel 2 HOG Feats
+        fig.add_subplot(4,4,16)
+        plt.imshow( hog(noncar_cs[:,:,2], orientations=self.orient,
+                                      pixels_per_cell=(self.pix_per_cell, self.pix_per_cell),
+                                      cells_per_block=(self.cell_per_block, self.cell_per_block),
+                                      transform_sqrt=True,
+                                      visualise=True, feature_vector=False)[1] ,cmap='gray')
+        plt.title('Non-Car'+colorspace+' channel 2 HOG', fontsize=8)
+        plt.axis('off')
+
+        plt.savefig('./output_images/HOG_Features_'+colorspace+'_.png', dpi=400)
+        plt.show()
+
+    def example_HOG_paras(self):
+        car = glob.glob('./trainingData/vehicles/vehicles/KITTI_extracted/*.png')
+        rnd_idx_car = np.random.randint(len(car)-1)
+        car_rgb = cv2.cvtColor(cv2.imread(car[rnd_idx_car]), cv2.COLOR_BGR2RGB)
+        car_img = cv2.cvtColor(cv2.imread(car[rnd_idx_car]), cv2.COLOR_BGR2YCrCb)[:,:,0]
+
+        # vary pixels per cell
+        fig=plt.figure()
+        fig.suptitle('HOG Features: varying pixels per cell', fontsize=16)
+        fig.add_subplot(1, 4, 1)
+        plt.imshow(car_rgb)
+        plt.title('RGB', fontsize=10)
+        plt.axis('off')
+
+        for idx, ppc in enumerate([4, 8, 16]):
+            fig.add_subplot(1, 4, 2+idx)
+            plt.imshow(hog(car_img[:, :], orientations=self.orient, pixels_per_cell=(ppc, ppc),
+                           cells_per_block=(self.cell_per_block, self.cell_per_block), transform_sqrt=True,
+                           visualise=True, feature_vector=False)[1], cmap = 'gray')
+            plt.title('Px per cell = '+str(ppc), fontsize=10)
+            plt.axis('off')
+        plt.savefig('./output_images/HOG_Features_ppc.png', dpi=400)
+
+        # vary orientations
+        fig=plt.figure()
+        fig.suptitle('HOG Features: varying orientations', fontsize=16)
+        fig.add_subplot(1, 4, 1)
+        plt.imshow(car_rgb)
+        plt.title('RGB', fontsize=10)
+        plt.axis('off')
+
+        for idx, ori in enumerate([6, 9, 12]):
+            fig.add_subplot(1, 4, 2+idx)
+            plt.imshow(hog(car_img[:, :], orientations=ori, pixels_per_cell=(self.pix_per_cell, self.pix_per_cell),
+                           cells_per_block=(self.cell_per_block, self.cell_per_block), transform_sqrt=True,
+                           visualise=True, feature_vector=False)[1], cmap = 'gray')
+            plt.title('orientations = '+str(ori), fontsize=10)
+            plt.axis('off')
+        plt.savefig('./output_images/HOG_Features_orient.png', dpi=400)
+        plt.show()
+
+
 
 def main():
-
-    Classifier().run_video()
+    Classifier().example_HOG_paras()
+    #Classifier().run_video()
     #Classifier().run_images()
 # executes main() if script is executed directly as the main function and not loaded as module
 if __name__ == '__main__':
