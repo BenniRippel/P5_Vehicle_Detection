@@ -1,4 +1,4 @@
-##Vehicle Detection Project
+## Vehicle Detection Project
 
 The goals of this project are the following:
 
@@ -41,11 +41,11 @@ For processing a video, the following steps are executed:
 [image8]: ./output_images/show_heatmap_filter2.png
 
 ## [Rubric](https://review.udacity.com/#!/rubrics/513/view) Points
-###Here I will consider the rubric points individually and describe how I addressed each point in my implementation.  
+### Here I will consider the rubric points individually and describe how I addressed each point in my implementation.  
 
-###Histogram of Oriented Gradients (HOG)
+### Histogram of Oriented Gradients (HOG)
 
-####1. Explain how (and identify where in your code) you extracted HOG features from the training images.
+#### 1. Explain how (and identify where in your code) you extracted HOG features from the training images.
 
 The following functions are used to load images, split them in training and validation sets and extract HOG-features. 
 The given
@@ -74,7 +74,7 @@ The given
     and stored to the according featureset.
     
     
-####2. Explain how you settled on your final choice of HOG parameters.
+#### 2. Explain how you settled on your final choice of HOG parameters.
 The chosen parameters for HOG-feature extraction were found by experiments.
 The following image shows HOG Features of a car and a non-car image,  for all color channels using 'HLS' and 'YCrCb' 
 colorspace. 
@@ -133,7 +133,7 @@ decreases the required computational load for training and prediciton.
 
 ![alt text][image4]
 
-####3. Describe how (and identify where in your code) you trained a classifier using your selected HOG features (and color features if you used them).
+#### 3. Describe how (and identify where in your code) you trained a classifier using your selected HOG features (and color features if you used them).
 
 I trained a SVM using only HOG features. A grid search was conducted using 'linear' and 'rbf' kernels and varying C 
 (penalty of error term) from .1 to 100. Although the 'rbf' kernel resulted in slightly higher accuracy, I chose the linear 
@@ -141,9 +141,9 @@ kernel. The rise in accuracy was not relevant (0.003%), so I chose the simpler '
 had no effect for the linear SVM.  
   
 
-###Sliding Window Search
+### Sliding Window Search
 
-####1. Describe how (and identify where in your code) you implemented a sliding window search.  How did you decide what scales to search and how much to overlap windows?
+#### 1. Describe how (and identify where in your code) you implemented a sliding window search.  How did you decide what scales to search and how much to overlap windows?
 
 Sliding window search was implemented as proposed in the lectures ( function 'find cars', lines 134-229).
 
@@ -171,7 +171,7 @@ generated to few true positives and too many false positives with less overlap, 
 thresholding. If more scales are used, the overlap can decrease without thresholding problems.     
 
 
-####2. Show some examples of test images to demonstrate how your pipeline is working.  What did you do to optimize the performance of your classifier?
+#### 2. Show some examples of test images to demonstrate how your pipeline is working.  What did you do to optimize the performance of your classifier?
 
 I tried several different features for the classifier, including different color spaces for HOG features as well as for 
 color histograms and spatial bins. Additionally, I tried to use [Udacity Data](https://github.com/udacity/self-driving-car/tree/master/annotations)
@@ -212,10 +212,7 @@ The next image displays the combined heatmap of the above frames, as well as the
 ![alt text][image8]
 
 
-
----
-
-###Discussion
+### Discussion
 
 ####1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
 
