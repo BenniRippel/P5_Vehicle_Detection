@@ -1,9 +1,4 @@
-#Probier folgendes
-# alle 20 frames hog suche mit feinen/vielen scales -> roi finden
-# in roi gftt fuer optical flow finden
-# roi mit optical flow tracken, achtung: outlier detection implementieren für opt-flow-features
-# fuer jeden frame die roi mit HOG bestaetigen
-# roi erstplotten wenn min 5 frames getracked wurde
+
 
 
 from moviepy.editor import VideoFileClip
@@ -13,14 +8,18 @@ import cv2
 import glob
 import time
 from collections import deque
+
 from sklearn.svm import LinearSVC, SVC
 from sklearn.preprocessing import StandardScaler
 from skimage.feature import hog
 
 class Classifier:
+
     def __init__(self):
+
         self.color_space = 'YCrCb'  # Can be RGB, HSV, LUV, HLS, YUV, YCrCb
         self.color_space_feat = 'YCrCb'
+
         self.orient = 9  # HOG orientations
         self.pix_per_cell = 8  # HOG pixels per cell
         self.cell_per_block = 2  # HOG cells per block
@@ -38,16 +37,17 @@ class Classifier:
         self.classifier = []
 
         self.heatmap = deque(maxlen=10)
-        self.heat_thresh = 18 #17
-
+        self.heat_thresh = 18
 
     def choose_classifier(self):
+        """Search for optimum classifier"""
         car_list_train, car_list_test, noncar_list_train, noncar_list_test = self.read_data()
+
         X_train, X_test, y_train, y_test, self.scaler = self.get_datasets(car_list_train, car_list_test,
                                                                           noncar_list_train, noncar_list_test)
         self.get_best_classifier(X_train, y_train, X_test, y_test)
 
-    def run_video(self, video='./project_video.mp4'):
+    def run_video(self, video='./challenge_video.mp4'):
         """Run the Vehicle Detection Pipeline on a input video"""
 
         car_list_train, car_list_test, noncar_list_train, noncar_list_test = self.read_data()
@@ -528,6 +528,7 @@ class Classifier:
         plt.show()
 
     def example_HOG_paras(self):
+        """Plots for explaining HOG Parameters"""
         car = glob.glob('./trainingData/vehicles/vehicles/KITTI_extracted/*.png')
         rnd_idx_car = np.random.randint(len(car)-1)
         car_rgb = cv2.cvtColor(cv2.imread(car[rnd_idx_car]), cv2.COLOR_BGR2RGB)
@@ -568,12 +569,75 @@ class Classifier:
         plt.savefig('./output_images/HOG_Features_orient.png', dpi=400)
         plt.show()
 
+    def show_heatmap_filter(self):
+        """Create plots for explaining the heatmap filter"""
+        car_list_train, car_list_test, noncar_list_train, noncar_list_test = self.read_data()
+        X_train, X_test, y_train, y_test, self.scaler = self.get_datasets(car_list_train, car_list_test,
+                                                                          noncar_list_train, noncar_list_test)
+        self.classifier = self.train_classifier(X_train, y_train, X_test, y_test)
+
+        # plot single frames with windows and heatmap
+        tests = glob.glob('./test_images/showHeatmap*.png')
+        fig = plt.figure()
+        idx = 1
+        self.heatmap = []
+        for img in tests:
+            test_img = cv2.imread(img)
+            t= time.time()
+            img=self.find_cars(test_img, return_image=True)
+            print('Time prediction: ', time.time()-t)
+            fig.add_subplot(len(tests)/2, 4, idx)
+            idx+=1
+            plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+            plt.axis('off')
+            fig.add_subplot(len(tests)/2, 4, idx)
+            idx+=1
+            plt.imshow(self.heatmap[-1], cmap='hot')
+            plt.axis('off')
+        plt.subplots_adjust(left=0.28, bottom=0.01, right=0.69, top=0.98, wspace=0.03, hspace=0.03)
+        plt.savefig('./output_images/show_heatmap_filter1.png', dpi=400)
+
+        #plot frame with resulting bounding boxes
+        fig2 = plt.figure()
+        fig2.add_subplot(1, 3, 1)
+        img = cv2.imread(tests[-1])
+        plt.imshow(self.plot_bboxes(cv2.cvtColor(img, cv2.COLOR_BGR2RGB)))
+        plt.axis('off')
+        plt.title('Bounding Boxes')
+        # plot resulting heatmap
+        heatmap = np.zeros_like(img[:, :, 0])
+        for a in self.heatmap:
+            heatmap += a
+        img2 = heatmap / np.max(heatmap)
+        fig2.add_subplot(1, 3, 2)
+        plt.imshow(img2, cmap='hot')
+        plt.axis('off')
+        plt.title('Combined Heatmap')
+        # plot found contours
+        # threshold heatmap
+        heatmap[heatmap<self.heat_thresh]=0
+        heatmap[heatmap>=self.heat_thresh] = 255
+        img3=np.zeros_like(img)
+        # find contours and plot their bounding rectangles
+        im2, contours, hierarchy = cv2.findContours(heatmap.astype('uint8'), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        for cnt in contours:
+            if cv2.contourArea(cnt)>2048:
+                cv2.drawContours(img3, [cnt], 0, (0, 255, 0), -1)
+
+        fig2.add_subplot(1, 3, 3)
+        plt.imshow(img3, cmap='gray')
+        plt.axis('off')
+        plt.title('Contours')
+        plt.savefig('./output_images/show_heatmap_filter2.png', dpi=400)
+        plt.show()
+
 
 
 def main():
     #Classifier().choose_classifier()
-    Classifier().run_video()
-    #Classifier().run_images()
+    # Classifier().run_video()
+    # Classifier().run_images()
+    Classifier().show_heatmap_filter()
 # executes main() if script is executed directly as the main function and not loaded as module
 if __name__ == '__main__':
     main()
