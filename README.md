@@ -3,7 +3,7 @@
 The goals of this project are the following:
 
 * Perform a Histogram of Oriented Gradients (HOG) feature extraction on a labeled training set of images and train a 
-classifier Linear SVM classifier
+ Linear SVM classifier
 * Optionally, you can also apply a color transform and append binned color features, as well as histograms of color, 
 to your HOG feature vector. 
 * Note: for those first two steps don't forget to normalize your features and randomize a selection for training and testing.
@@ -48,11 +48,11 @@ For processing a video, the following steps are executed:
 #### 1. Explain how (and identify where in your code) you extracted HOG features from the training images.
 
 The following functions are used to load images, split them in training and validation sets and extract HOG-features. 
-The given
+
 
 * function 'read_data' (lines: 232-250)
 
-    Load filepaths of ImageData for both classes (car and non-car), split the KITTI-Data (Cars) and Extras-Data (non-cars)
+    Load filepaths of image data for both classes (car and non-car), split the KITTI-Data (Cars) and Extras-Data (non-cars)
     in training and validation sets (75% / 25%). Append the GTI data to the training data. The GTI Data is not used for 
     validation due to the sequential characteristics of the data (Images are taken from a video stream), which might 
     cause overfitting. 
@@ -96,7 +96,7 @@ number of orientations for HOG features describe the amount of bins the gradient
 shown that the accuracy of the classifier decreases with orientations below 9, while higher numbers don't result in 
 accuracy gain. Looking at the right part of the image below, the influence of the pixels per cell are obvious, less px 
 per cell result in a finer grid of cells accompanied by a susceptibility to noise. Training accuracy, applying the 
-classifier on test images as well as common sense show that a value of 16 px per cell is way to coarse, while a grid 
+classifier on test images as well as common sense show that a value of 16 px per cell is way too coarse, while a grid 
 finer than 8px per cell won't result in better accuracy. Applying [Occam's Razor](https://en.wikipedia.org/wiki/Occam's_razor), 
 the parameters resulting in a lower dimension feature are preferred if the accuracy of the classfier is comparable to a 
 higher dimension feature. Another reason for this decision is the reduction of computation time.
@@ -112,7 +112,7 @@ precision but also increasing computation time. With 2 cells per step, which equ
  the overlap is 75%. Experiments show that a reduction of cells per steps reduces precision, and thus complicates false 
  positive handling.
   
- The chosen parameters are summarized in te following table:
+ The chosen parameters are summarized in the following table:
 
 | Parameter | Value | 
 |:---|:---:|
@@ -167,7 +167,7 @@ cars size within the image changes with its distance toward the camera. If the s
 current size within the image, false negatives might result. The computation time for each scale decreases with increasing 
 scale values due to smaller images, but the number of different scale values should still be as small as possible. Searching 
 the image at scales 1.0 and 1.5 turned out to be sufficient, if the overlap is at least 75%. The sliding window search 
-generated to few true positives and too many false positives with less overlap, which led to problems with the heatmap 
+generated too few true positives and too many false positives with less overlap, which led to problems with the heatmap 
 thresholding. If more scales are used, the overlap can decrease without thresholding problems.     
 
 
