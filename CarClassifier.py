@@ -16,7 +16,6 @@ from collections import deque
 from sklearn.svm import LinearSVC, SVC
 from sklearn.preprocessing import StandardScaler
 from skimage.feature import hog
-from sklearn.model_selection import GridSearchCV
 
 class Classifier:
     def __init__(self):
@@ -39,22 +38,22 @@ class Classifier:
         self.classifier = []
 
         self.heatmap = deque(maxlen=10)
-        self.heat_thresh = 17 #17
+        self.heat_thresh = 18 #17
 
 
     def choose_classifier(self):
-        car_list_train, car_list_test, noncar_list_train, noncar_list_test = self.readData()
-        X_train, X_test, y_train, y_test, self.scaler = self.get_features(car_list_train, car_list_test,
+        car_list_train, car_list_test, noncar_list_train, noncar_list_test = self.read_data()
+        X_train, X_test, y_train, y_test, self.scaler = self.get_datasets(car_list_train, car_list_test,
                                                                           noncar_list_train, noncar_list_test)
-        self.get_best_classifier(X_train, X_test, y_train, y_test)
+        self.get_best_classifier(X_train, y_train, X_test, y_test)
 
-    def run_video(self, video='./test_video.mp4'):
+    def run_video(self, video='./project_video.mp4'):
         """Run the Vehicle Detection Pipeline on a input video"""
 
-        car_list_train, car_list_test, noncar_list_train, noncar_list_test = self.readData()
-        X_train, X_test, y_train, y_test, self.scaler = self.get_features(car_list_train, car_list_test,
+        car_list_train, car_list_test, noncar_list_train, noncar_list_test = self.read_data()
+        X_train, X_test, y_train, y_test, self.scaler = self.get_datasets(car_list_train, car_list_test,
                                                                           noncar_list_train, noncar_list_test)
-        self.classifier = self.train_Classifier(X_train, y_train, X_test, y_test)
+        self.classifier = self.train_classifier(X_train, y_train, X_test, y_test)
 
         out_file = video[:-4] + '_output.mp4'  # output file
         clip = VideoFileClip(video)  # read video
@@ -84,18 +83,14 @@ class Classifier:
 
     def run_images(self):
         """Run on example images"""
-        car_list_train, car_list_test, noncar_list_train, noncar_list_test = self.readData()
-        X_train, X_test, y_train, y_test, self.scaler = self.get_features(car_list_train, car_list_test,
+        car_list_train, car_list_test, noncar_list_train, noncar_list_test = self.read_data()
+        X_train, X_test, y_train, y_test, self.scaler = self.get_datasets(car_list_train, car_list_test,
                                                                           noncar_list_train, noncar_list_test)
-        print(X_train.shape, y_train.shape)
-        print(X_test.shape, y_test.shape)
-        print(np.max(X_train))
-        self.classifier = self.train_Classifier(X_train, y_train, X_test, y_test)
+        self.classifier = self.train_classifier(X_train, y_train, X_test, y_test)
 
-        tests = glob.glob('./test_images/vlc*.png')
+        tests = glob.glob('./test_images/*.jpg')
         fig = plt.figure()
         idx = 1
-
         for img in tests:
             test_img = cv2.imread(img)
             t= time.time()
@@ -172,14 +167,14 @@ class Classifier:
             ch2 = HOG_color_img[:, :, 1]
             ch3 = HOG_color_img[:, :, 2]
 
-            # Define blocks and steps
-            nxblocks = (ch1.shape[1] // self.pix_per_cell) - (self.cell_per_block- 1) # no of blocks in x-dir over image
-            nyblocks = (ch1.shape[0] // self.pix_per_cell) - (self.cell_per_block-1) # no of blocks in y-dir over image
+            # Define cells and steps
+            nxcells = (ch1.shape[1] // self.pix_per_cell)-1  # no of cells in x-dir over image
+            nycells = (ch1.shape[0] // self.pix_per_cell)-1  # no of cells in y-dir over image
             # 64 was the orginal sampling rate, with 8 cells and 8 pix per cell
             window = 64
-            nblocks_per_window = (window // self.pix_per_cell) - 1
-            nxsteps = (nxblocks - nblocks_per_window) // self.cells_per_step
-            nysteps = (nyblocks - nblocks_per_window) // self.cells_per_step
+            ncells_per_window = (window // self.pix_per_cell)-1
+            nxsteps = (nxcells - ncells_per_window) // self.cells_per_step
+            nysteps = (nycells - ncells_per_window) // self.cells_per_step
 
             # Compute individual channel HOG features for the entire image
             hog1 = self.get_hog_features(ch1, feature_vec=False)
@@ -191,19 +186,19 @@ class Classifier:
                     ypos = yb * self.cells_per_step
                     xpos = xb * self.cells_per_step
                     # Extract HOG for this patch
-                    hog_feat1 = hog1[ypos:ypos + nblocks_per_window, xpos:xpos + nblocks_per_window].ravel()
-                    hog_feat2 = hog2[ypos:ypos + nblocks_per_window, xpos:xpos + nblocks_per_window].ravel()
-                    hog_feat3 = hog3[ypos:ypos + nblocks_per_window, xpos:xpos + nblocks_per_window].ravel()
+                    hog_feat1 = hog1[ypos:ypos + ncells_per_window, xpos:xpos + ncells_per_window].ravel()
+                    hog_feat2 = hog2[ypos:ypos + ncells_per_window, xpos:xpos + ncells_per_window].ravel()
+                    hog_feat3 = hog3[ypos:ypos + ncells_per_window, xpos:xpos + ncells_per_window].ravel()
                     hog_features = np.hstack((hog_feat1, hog_feat2, hog_feat3))
 
                     # index in pixelspace
                     xleft = xpos * self.pix_per_cell
                     ytop = ypos * self.pix_per_cell
 
-                    # Extract the image patch
-                    subimg = cv2.resize(Color_feat_img[ytop:ytop + window, xleft:xleft + window], (64, 64))
-
                     # Get color features
+                    if self.spatial_feat or self.hist_feat:
+                        # Extract the image patch
+                        subimg = cv2.resize(Color_feat_img[ytop:ytop + window, xleft:xleft + window], (64, 64))
                     if self.spatial_feat:
                         spatial_features = self.bin_spatial(subimg)
                     else:
@@ -212,6 +207,7 @@ class Classifier:
                         hist_features = self.color_hist(subimg)
                     else:
                         hist_features = []
+
                     # Scale features and make a prediction
                     test_features =self.scaler.transform(np.hstack((spatial_features, hist_features, hog_features)).reshape(1, -1))
                     test_prediction = self.classifier.predict(test_features)
@@ -229,7 +225,7 @@ class Classifier:
             return draw_img
 
 
-    def readData(self):
+    def read_data(self):
         """take 25% of the kitti data and 25% of the non-vehicles/Extras for testing, add rest to training data"""
         # Read in cars and notcars
         kitti = glob.glob('./trainingData/vehicles/vehicles/KITTI_extracted/*.png')
@@ -249,7 +245,7 @@ class Classifier:
 
         return class_1_train, class_1_test, class_2_train, class_2_test
 
-    def get_features(self, class_1_train, class_1_test, class_2_train, class_2_test):
+    def get_datasets(self, class_1_train, class_1_test, class_2_train, class_2_test):
         """Loads images and extracts the features, splits into train and testset"""
         # extract positive and negative features and stack them
         class_1_feats_train = self.extract_features(class_1_train)
@@ -276,7 +272,7 @@ class Classifier:
 
         return scaled_X_train[idx_train], scaled_X_test[idx_test], y_train[idx_train], y_test[idx_test], X_scaler
 
-    def train_Classifier(self, X_train, y_train, X_test, y_test):
+    def train_classifier(self, X_train, y_train, X_test, y_test):
         """Trains a Classifier"""
         # Use a linear SVC
         svc = LinearSVC()
@@ -292,11 +288,12 @@ class Classifier:
 
     def get_best_classifier(self, X_train, y_train, X_test, y_test):
         """Grid search classifier for best result"""
-        paras = {'kernel': ('linear', 'rbf'), 'C': [0.1, 1, 10, 100]}
-        svm = SVC()
-        clf = GridSearchCV(svm, paras, n_jobs=3, cv=[X_test, y_test])
-        clf.fit(X_train, y_train)
-        sorted(clf.cv_results_.keys())
+        for kernel in ['rbf', 'linear']:
+            for c in [0.1, 10]:
+                svm = SVC(kernel=kernel, C=c)
+                svm.fit(X_train, y_train)
+                score=svm.score(X_test, y_test)
+                print('Kernel: ', kernel, ' C: ', c, ' Score: ', score)
 
     def equalize(self, img):
         """equalize BGR Image"""
@@ -392,8 +389,11 @@ class Classifier:
         # load random images
         car = glob.glob('./trainingData/vehicles/vehicles/KITTI_extracted/*.png')
         noncar =glob.glob('./trainingData/non-vehicles/non-vehicles/Extras/*.png')
-        rnd_idx_car = np.random.randint(len(car)-1)
-        rnd_idx_noncar = np.random.randint(len(noncar)-1)
+        # rnd_idx_car = np.random.randint(len(car)-1)
+        # rnd_idx_noncar = np.random.randint(len(noncar)-1)
+        rnd_idx_car = 100
+        rnd_idx_noncar = 24
+
         car_img = cv2.imread(car[rnd_idx_car])
         noncar_img = cv2.imread(noncar[rnd_idx_noncar])
         # convert to colorspace
@@ -403,7 +403,7 @@ class Classifier:
 
         # plot
         fig=plt.figure()
-        fig.suptitle('HOG Features for different color channels of the colorspace '+colorspace, fontsize=16)
+        fig.suptitle('HOG Features of the colorspace '+colorspace, fontsize=16)
         #rgb car
         fig.add_subplot(4, 4, 1)
         plt.imshow(cv2.cvtColor(car_img, cv2.COLOR_BGR2RGB))
@@ -431,7 +431,7 @@ class Classifier:
         # colorspace car channel 0
         fig.add_subplot(4,4,5)
         plt.imshow(car_cs[:,:,0], cmap='gray')
-        plt.title('Car'+colorspace+' channel 0', fontsize=8)
+        plt.title('Car'+colorspace+' chan 0', fontsize=8)
         plt.axis('off')
 
         # colorspace car channel 0 HOG Feats
@@ -441,13 +441,13 @@ class Classifier:
                                       cells_per_block=(self.cell_per_block, self.cell_per_block),
                                       transform_sqrt=True,
                                       visualise=True, feature_vector=False)[1] ,cmap='gray')
-        plt.title('Car'+colorspace+' channel 0 HOG', fontsize=8)
+        plt.title('Car'+colorspace+' chan 0 HOG', fontsize=8)
         plt.axis('off')
 
         # colorspace noncar channel 0
         fig.add_subplot(4,4,7)
         plt.imshow(noncar_cs[:,:,0], cmap='gray')
-        plt.title('Non-Car'+colorspace+' channel 0', fontsize=8)
+        plt.title('Non-Car'+colorspace+' chan 0', fontsize=8)
         plt.axis('off')
 
         # colorspace noncar channel 0 HOG Feats
@@ -457,13 +457,13 @@ class Classifier:
                                       cells_per_block=(self.cell_per_block, self.cell_per_block),
                                       transform_sqrt=True,
                                       visualise=True, feature_vector=False)[1] ,cmap='gray')
-        plt.title('Non-Car'+colorspace+' channel 0 HOG', fontsize=8)
+        plt.title('Non-Car'+colorspace+' chan 0 HOG', fontsize=8)
         plt.axis('off')
 
         # colorspace car channel 1
         fig.add_subplot(4,4,9)
         plt.imshow(car_cs[:,:,1], cmap='gray')
-        plt.title('Car'+colorspace+' channel 1', fontsize=8)
+        plt.title('Car'+colorspace+' chan 1', fontsize=8)
         plt.axis('off')
 
         # colorspace car channel 1 HOG Feats
@@ -473,13 +473,13 @@ class Classifier:
                                       cells_per_block=(self.cell_per_block, self.cell_per_block),
                                       transform_sqrt=True,
                                       visualise=True, feature_vector=False)[1] ,cmap='gray')
-        plt.title('Car'+colorspace+' channel 1 HOG', fontsize=8)
+        plt.title('Car'+colorspace+' chan 1 HOG', fontsize=8)
         plt.axis('off')
 
         # colorspace noncar channel 1
         fig.add_subplot(4,4,11)
         plt.imshow(noncar_cs[:,:,1], cmap='gray')
-        plt.title('Non-Car'+colorspace+' channel 1', fontsize=8)
+        plt.title('Non-Car'+colorspace+' chan 1', fontsize=8)
         plt.axis('off')
 
         # colorspace noncar channel 1 HOG Feats
@@ -489,13 +489,13 @@ class Classifier:
                                       cells_per_block=(self.cell_per_block, self.cell_per_block),
                                       transform_sqrt=True,
                                       visualise=True, feature_vector=False)[1] ,cmap='gray')
-        plt.title('Non-Car'+colorspace+' channel 1 HOG', fontsize=8)
+        plt.title('Non-Car'+colorspace+' chan 1 HOG', fontsize=8)
         plt.axis('off')
 
         # colorspace car channel 2
         fig.add_subplot(4,4,13)
         plt.imshow(car_cs[:,:,2], cmap='gray')
-        plt.title('Car'+colorspace+' channel 2', fontsize=8)
+        plt.title('Car'+colorspace+' chan 2', fontsize=8)
         plt.axis('off')
 
         # colorspace car channel 2 HOG Feats
@@ -505,13 +505,13 @@ class Classifier:
                                       cells_per_block=(self.cell_per_block, self.cell_per_block),
                                       transform_sqrt=True,
                                       visualise=True, feature_vector=False)[1] ,cmap='gray')
-        plt.title('Car'+colorspace+' channel 2 HOG', fontsize=8)
+        plt.title('Car'+colorspace+' chan 2 HOG', fontsize=8)
         plt.axis('off')
 
         # colorspace noncar channel 2
         fig.add_subplot(4,4,15)
         plt.imshow(noncar_cs[:,:,2], cmap='gray')
-        plt.title('Non-Car'+colorspace+' channel 2', fontsize=8)
+        plt.title('Non-Car'+colorspace+' chan 2', fontsize=8)
         plt.axis('off')
 
         # colorspace noncar channel 2 HOG Feats
@@ -521,7 +521,7 @@ class Classifier:
                                       cells_per_block=(self.cell_per_block, self.cell_per_block),
                                       transform_sqrt=True,
                                       visualise=True, feature_vector=False)[1] ,cmap='gray')
-        plt.title('Non-Car'+colorspace+' channel 2 HOG', fontsize=8)
+        plt.title('Non-Car'+colorspace+' chan 2 HOG', fontsize=8)
         plt.axis('off')
 
         plt.savefig('./output_images/HOG_Features_'+colorspace+'_.png', dpi=400)
@@ -571,8 +571,8 @@ class Classifier:
 
 
 def main():
-    Classifier().example_HOG_paras()
-    #Classifier().run_video()
+    #Classifier().choose_classifier()
+    Classifier().run_video()
     #Classifier().run_images()
 # executes main() if script is executed directly as the main function and not loaded as module
 if __name__ == '__main__':
