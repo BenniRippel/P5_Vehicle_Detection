@@ -32,8 +32,8 @@ For processing a video, the following steps are executed:
 
 [//]: # (Image References)
 [image1]: ./output_images/HOG_Colorspace.png
-[image2]: ./output_images/ClassifierResults/HLS_vs_YCrCb.png
-[image3]: ./output_images/HOG_paras_or_ppc.png
+[image2]: ./output_images/ClassifierResultsDifferentColorspaces/HLS_vs_YCrCb.png
+[image3]: ./output_images/HOG_paras_orient_ppc.png
 [image4]: ./output_images/Colorspaces.jpg
 [image5]: ./output_images/examples.png
 [image6]: ./output_images/more_examples.png
