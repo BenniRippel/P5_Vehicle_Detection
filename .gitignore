@@ -2,6 +2,6 @@
 *.pickle
 *.zip
 *.npy
-*.idea
+.idea/
 *.pyc
 *.xml
